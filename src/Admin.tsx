@@ -15,7 +15,7 @@ interface Settings {
   max_delivery_km: number;
 }
 
-const Admin = () => {
+const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
 
@@ -54,7 +54,14 @@ const Admin = () => {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ color: '#4f46e5' }}>Admin Dashboard</h1>
+      
+      {/* Logout Button yahan add kiya hai */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ color: '#4f46e5' }}>Admin Dashboard</h1>
+        <button onClick={onLogout} style={{ padding: '10px 20px', background: 'red', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+          Logout
+        </button>
+      </div>
 
       <div style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
         <h3>Global Delivery Charge Settings (Sab Branches pe lagu)</h3>
