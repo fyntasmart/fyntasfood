@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { supabase } from './supabaseClient'
 
 interface LoginProps {
@@ -81,7 +81,7 @@ const Login = ({ onLogin }: LoginProps) => {
     }
   }
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputsRef.current[index - 1]?.focus()
     }
@@ -163,7 +163,10 @@ const Login = ({ onLogin }: LoginProps) => {
             {otp.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => (inputsRef.current[index] = el)}
+                // ✅ Yahan fix kiya hai (return type void karne ke liye)
+                ref={(el) => {
+                  inputsRef.current[index] = el;
+                }}
                 type="text"
                 maxLength={1}
                 value={digit}
