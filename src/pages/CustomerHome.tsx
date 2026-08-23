@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
-const CustomerHome = () => {
+const CustomerHome = ({ addToCart }: any) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -23,7 +23,7 @@ const CustomerHome = () => {
     fetchData();
   }, []);
 
-  // 🔥 Automatic Banner Slider Logic (Har 3 second mein agla banner)
+  // Automatic Banner Slider Logic (Har 3 second mein agla banner)
   useEffect(() => {
     if (banners.length <= 1) return;
     
@@ -44,20 +44,9 @@ const CustomerHome = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0' }}>
-        <h2 style={{ margin: 0, color: '#000000', fontWeight: 'bold' }}>Fyntas Food</h2>
-        <div style={{ display: 'flex', gap: '15px' }}>
-          <span style={{ color: '#1e40af' }}>🔔</span>
-          <span style={{ color: '#1e40af' }}>🛒</span>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <input placeholder="Search products here..." style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '15px', color: '#000000', backgroundColor: '#ffffff' }} />
-
-      {/* Banner Carousel - AB AUTO SLIDE HOGI */}
-      {/* ✅ FIX: index parameter ko hata diya hai */}
+      {/* Header - (Yahan header CustomerLayout ka hai, isliye sirf content) */}
+      
+      {/* Banner Carousel */}
       <div ref={bannerRef} style={{ display: 'flex', overflowX: 'auto', gap: '10px', scrollSnapType: 'x mandatory', marginBottom: '20px', scrollbarWidth: 'none', scrollBehavior: 'smooth' }}>
         {banners.map((b) => (
           <img 
@@ -89,7 +78,7 @@ const CustomerHome = () => {
         </div>
       </div>
 
-      {/* Featured Items */}
+      {/* Featured Items (Add to Cart Button ke saath) */}
       <div>
         <h3 style={{ margin: '0 0 10px', color: '#000000' }}>Featured Items</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -99,7 +88,11 @@ const CustomerHome = () => {
               <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
                 <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
-                <span style={{ fontSize: '18px', color: '#1e40af' }}>🛒</span>
+                {/* ✅ Add to Cart Button */}
+                <button 
+                  onClick={() => addToCart(p)} 
+                  style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                >🛒 Add</button>
               </div>
             </div>
           ))}
