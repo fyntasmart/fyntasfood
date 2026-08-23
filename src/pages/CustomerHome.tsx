@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
-const CustomerHome = ({ addToCart }: any) => {
+const CustomerHome = ({ addToCart, onProductClick }: any) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   
-  // Auto-slide ke liye index
   const [currentBanner, setCurrentBanner] = useState(0);
   const bannerRef = useRef<HTMLDivElement>(null);
 
@@ -23,18 +22,14 @@ const CustomerHome = ({ addToCart }: any) => {
     fetchData();
   }, []);
 
-  // Automatic Banner Slider Logic (Har 3 second mein agla banner)
   useEffect(() => {
     if (banners.length <= 1) return;
-    
     const interval = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 3000);
-
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Jab currentBanner change ho, tab scroll karo
   useEffect(() => {
     if (bannerRef.current && banners.length > 0) {
       const slideWidth = bannerRef.current.clientWidth;
@@ -44,25 +39,12 @@ const CustomerHome = ({ addToCart }: any) => {
 
   return (
     <div>
-      {/* Header - (Yahan header CustomerLayout ka hai, isliye sirf content) */}
-      
-      {/* Banner Carousel */}
+      {/* Banner */}
       <div ref={bannerRef} style={{ display: 'flex', overflowX: 'auto', gap: '10px', scrollSnapType: 'x mandatory', marginBottom: '20px', scrollbarWidth: 'none', scrollBehavior: 'smooth' }}>
         {banners.map((b) => (
-          <img 
-            key={b.id} 
-            src={b.image_url} 
-            style={{ 
-              width: '100%', 
-              aspectRatio: '2 / 1',
-              objectFit: 'cover',
-              borderRadius: '15px', 
-              flexShrink: 0, 
-              scrollSnapAlign: 'start' 
-            }} 
-          />
+          <img key={b.id} src={b.image_url} style={{ width: '100%', aspectRatio: '2 / 1', objectFit: 'cover', borderRadius: '15px', flexShrink: 0, scrollSnapAlign: 'start' }} />
         ))}
-        {banners.length === 0 && <div style={{ width: '100%', aspectRatio: '2 / 1', background: '#eff6ff', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', border: '1px solid #bfdbfe' }}>Banner Yahan Dikhega</div>}
+        {banners.length === 0 && <div style={{ width: '100%', aspectRatio: '2 / 1', background: '#eff6ff', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>Banner Yahan Dikhega</div>}
       </div>
 
       {/* Popular Categories */}
@@ -78,21 +60,18 @@ const CustomerHome = ({ addToCart }: any) => {
         </div>
       </div>
 
-      {/* Featured Items (Add to Cart Button ke saath) */}
+      {/* Featured Items (Click karne par modal khulega) */}
       <div>
         <h3 style={{ margin: '0 0 10px', color: '#000000' }}>Featured Items</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {products.map(p => (
-            <div key={p.id} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
+            <div key={p.id} onClick={() => onProductClick(p)} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', cursor: 'pointer' }}>
               <img src={p.image_url || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
               <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
                 <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
-                {/* ✅ Add to Cart Button */}
-                <button 
-                  onClick={() => addToCart(p)} 
-                  style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                >🛒 Add</button>
+                {/* Add to Cart Button (Click par popup) */}
+                <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🛒 Add</button>
               </div>
             </div>
           ))}
