@@ -48,7 +48,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
           setAddress(`My Current Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
           setUseCurrentLocation(true);
         },
-        (error) => {
+        () => {  // ✅ FIX: error parameter hata diya
           alert("Location permission nahi mili. Address manually likhein.");
           setUseCurrentLocation(false);
         }
