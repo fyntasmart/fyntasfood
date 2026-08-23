@@ -1,38 +1,16 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useState } from 'react'
-import { supabase } from './supabaseClient'
-import Checkout from './Checkout.tsx';
 import Admin from './Admin.tsx';
-import Login from './Login.tsx';
+import CustomerLayout from './CustomerLayout.tsx';
 
 function App() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
-    // Check if user is remembered in localStorage or sessionStorage
-    return localStorage.getItem('admin_remember') === 'true' || sessionStorage.getItem('admin_remember') === 'true';
-  })
-
-  // Logout Function
-  const handleLogout = () => {
-    localStorage.removeItem('admin_remember')
-    sessionStorage.removeItem('admin_remember')
-    supabase.auth.signOut()
-    setIsAdminLoggedIn(false)
-  }
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Checkout />} />
-        <Route 
-          path="/admin" 
-          element={
-            isAdminLoggedIn ? (
-              <Admin onLogout={handleLogout} />
-            ) : (
-              <Login onLogin={() => setIsAdminLoggedIn(true)} />
-            )
-          } 
-        />
+        {/* Customer App */}
+        <Route path="/*" element={<CustomerLayout />} />
+        
+        {/* Admin Panel (Private) */}
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   );
