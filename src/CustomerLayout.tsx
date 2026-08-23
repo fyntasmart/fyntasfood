@@ -9,12 +9,20 @@ import CustomerCheckout from './pages/CustomerCheckout';
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
-  // CART STATE
   const [cart, setCart] = useState<any[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
 
-  // Add to Cart function
+  // 🔥 Toast (Popup) State
+  const [toast, setToast] = useState('');
+
+  // 🔥 Product Details Modal State
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000); // 2 second baad hide ho jayega
+  };
+
   const addToCart = (product: any) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -23,6 +31,8 @@ const CustomerLayout = () => {
       }
       return [...prev, { ...product, qty: 1 }];
     });
+    // 🔥 Toast trigger
+    showToast('Item Added to Cart ✔️');
   };
 
   const tabs = [
@@ -50,26 +60,39 @@ const CustomerLayout = () => {
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', maxWidth: '480px', margin: '0 auto', paddingBottom: '80px', background: '#ffffff', minHeight: '100vh', position: 'relative' }}>
       
-      {/* Drawer Overlay */}
-      {isDrawerOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>
+      {/* 🔥 Toast Popup */}
+      {toast && (
+        <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#1e40af', color: '#fff', padding: '10px 20px', borderRadius: '20px', zIndex: 500, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+          {toast}
+        </div>
       )}
 
+      {/* 🔥 Product Details Modal */}
+      {selectedProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedProduct(null)}>
+          <div style={{ background: '#fff', borderRadius: '15px', padding: '20px', maxWidth: '350px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#111827' }}>✕</button>
+            </div>
+            <img src={selectedProduct.image_url || 'https://via.placeholder.com/200'} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px' }} />
+            <h3 style={{ margin: '10px 0 5px', color: '#111827' }}>{selectedProduct.name}</h3>
+            <p style={{ color: '#666', fontSize: '14px', margin: '0 0 10px' }}>{selectedProduct.description || 'Description nahi hai'}</p>
+            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e40af' }}>₹{selectedProduct.price} / {selectedProduct.unit}</p>
+            <button onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }} style={{ width: '100%', padding: '12px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Add to Cart</button>
+          </div>
+        </div>
+      )}
+
+      {/* Drawer Overlay */}
+      {isDrawerOpen && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>}
+
       {/* Drawer */}
-      <div style={{ 
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', 
-        background: '#ffffff', zIndex: 300, 
-        transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', 
-        transition: 'transform 0.3s ease', 
-        boxShadow: '2px 0 10px rgba(0,0,0,0.1)', 
-        display: 'flex', flexDirection: 'column'
-      }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ background: '#1e40af', padding: '30px 20px', textAlign: 'center', color: '#ffffff' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#ffffff', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '35px', color: '#1e40af' }}>👤</div>
           <h3 style={{ margin: '0', fontWeight: 'bold' }}>Guest User</h3>
           <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Sign in to get started</p>
         </div>
-
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
           {drawerItems.map(item => (
             <div key={item.id} onClick={() => { setActiveTab(item.id); setIsDrawerOpen(false); setIsCheckout(false); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '14px 20px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}>
@@ -77,13 +100,7 @@ const CustomerLayout = () => {
               <span style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>{item.label}</span>
             </div>
           ))}
-          <div onClick={() => { setIsDrawerOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '14px 20px', cursor: 'pointer', borderTop: '1px solid #f0f0f0', marginTop: '10px' }}>
-            <span style={{ fontSize: '20px', color: '#1e40af' }}>🚪</span>
-            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e40af' }}>Login</span>
-          </div>
         </div>
-
-        <div style={{ padding: '10px 0', textAlign: 'center', color: '#999', fontSize: '12px' }}>Version 1.0.0</div>
       </div>
 
       {/* Header */}
@@ -99,22 +116,14 @@ const CustomerLayout = () => {
 
       {/* Content Area */}
       <div style={{ padding: '0px' }}>
-        {activeTab === 'home' && <CustomerHome addToCart={addToCart} />}
-        {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} />}
+        {/* onProductClick prop add kiya */}
+        {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={setSelectedProduct} />}
+        {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={setSelectedProduct} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile />}
         
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
         {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
-
-        {/* Drawer ke baaki pages */}
-        {activeTab === 'orders' && <div style={{ padding: '20px' }}><p>My Orders</p></div>}
-        {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
-        {activeTab === 'addresses' && <div style={{ padding: '20px' }}><p>Manage Addresses</p></div>}
-        {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
-        {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
-        {activeTab === 'terms' && <div style={{ padding: '20px' }}><p>Terms & Conditions</p></div>}
-        {activeTab === 'refund' && <div style={{ padding: '20px' }}><p>Refund Policy</p></div>}
       </div>
 
       {/* Bottom Navigation */}
