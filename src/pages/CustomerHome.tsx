@@ -57,8 +57,9 @@ const CustomerHome = () => {
       <input placeholder="Search products here..." style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '15px', color: '#000000', backgroundColor: '#ffffff' }} />
 
       {/* Banner Carousel - AB AUTO SLIDE HOGI */}
+      {/* ✅ FIX: index parameter ko hata diya hai */}
       <div ref={bannerRef} style={{ display: 'flex', overflowX: 'auto', gap: '10px', scrollSnapType: 'x mandatory', marginBottom: '20px', scrollbarWidth: 'none', scrollBehavior: 'smooth' }}>
-        {banners.map((b, index) => (
+        {banners.map((b) => (
           <img 
             key={b.id} 
             src={b.image_url} 
