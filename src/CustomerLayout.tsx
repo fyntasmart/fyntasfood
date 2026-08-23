@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
