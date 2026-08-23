@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { supabase } from '../../supabaseClient';
+// ✅ Path fix kiya: '../supabaseClient' (Bahut important!)
+import { supabase } from '../supabaseClient';
 
 interface OtpProps {
   mobile: string;
@@ -14,7 +15,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Animation states
   const [isArranged, setIsArranged] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
 
@@ -22,7 +22,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
     inputsRef.current[0]?.focus();
   }, []);
 
-  // Handle input
   const handleChange = (index: number, value: string) => {
     const newOtp = [...otp];
     newOtp[index] = value.replace(/[^0-9]/g, '').slice(0, 1);
@@ -44,7 +43,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
     }
   };
 
-  // REAL OTP Verification Logic
   const verifyOtp = async (code: string) => {
     setIsVerifying(true);
     
@@ -61,7 +59,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
       }
 
       if (data?.status === 'success') {
-        // Trigger Success Animation
         setIsArranged(true);
         setIsSpinning(true);
         
@@ -89,7 +86,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
   return (
     <div style={{ padding: '20px', fontFamily: '"Helvetica Neue", Arial, sans-serif', background: '#020203', color: '#f7f3e8', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <style>{`
-        /* CSS from the provided HTML */
         :root{--bg:#050507;--text:#f7f3e8;--muted:#8f8a7c;--gold:#d9ad52;--gold2:#f6d98a;--teal:#53e6d3}
         .phone{width:390px;min-height:740px;background:radial-gradient(100% 80% at 50% 0%,#171711 0%,#0a0a0d 42%,#050507 100%);border:1px solid rgba(246,217,138,.38);border-radius:38px;padding:25px 24px;position:relative;overflow:hidden;box-shadow:0 35px 100px rgba(0,0,0,.8),0 0 55px rgba(218,174,82,.08);display:flex;flex-direction:column}
         .status{display:flex;justify-content:space-between;font-size:12px;color:#8f8a7c;margin-bottom:18px}
@@ -103,7 +99,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
         .otp-row{display:flex;gap:10px;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transition:all 1s cubic-bezier(.6,.05,.25,1)}
         .box{width:62px;height:70px;border-radius:16px;border:1px solid rgba(246,217,138,.28);background:linear-gradient(145deg,#18181d,#0b0b0f);display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:700;position:relative;transition:all 1s cubic-bezier(.6,.05,.25,1);box-shadow:inset 0 1px rgba(255,255,255,.04),0 12px 30px rgba(0,0,0,.25)}
         .box input{width:100%;height:100%;background:transparent;border:0;outline:0;color:#fff;font-size:25px;font-weight:700;text-align:center;caret-color:var(--teal)}
-        /* Arranged (Square) State */
         .otp-row.arranged{position:absolute;left:0;top:0;width:100%;height:100%;gap:0;transform:none}
         .otp-row.arranged .box{position:absolute;transform:translate(-50%,-50%)}
         .otp-row.arranged .box:nth-child(1){left:34%;top:32%;}
@@ -152,7 +147,6 @@ const OtpVerification = ({ mobile, onSuccess, onBack }: OtpProps) => {
             </div>
           </div>
 
-          {/* Success Screen */}
           <div className={`success ${isSuccess ? 'show' : ''}`}>
             <div className="check"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></div>
             <h2>Verified successfully</h2>
