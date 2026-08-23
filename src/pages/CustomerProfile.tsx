@@ -1,9 +1,9 @@
-const CustomerFavorites = () => {
+const CustomerProfile = () => {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
-      <h2>❤️ Favorite Items</h2>
-      <p style={{ color: '#6b7280' }}>Aapke favorite products yahan dikhenge.</p>
+      <h2>👤 My Profile</h2>
+      <p style={{ color: '#6b7280' }}>Login karne ke baad yahan details dikhengi.</p>
     </div>
   );
 };
-export default CustomerFavorites;
+export default CustomerProfile;
