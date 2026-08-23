@@ -16,26 +16,19 @@ const Login = ({ onLogin }: LoginProps) => {
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([])
 
-  // OTP inputs focus management
   useEffect(() => {
-    if (step === 2) {
-      inputsRef.current[0]?.focus()
-    }
+    if (step === 2) inputsRef.current[0]?.focus()
   }, [step])
 
-  // Check if user is already logged in
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('admin_remember') === 'true' || sessionStorage.getItem('admin_remember') === 'true'
-    if (isLoggedIn) {
-      onLogin({ mobile: 'saved' })
-    }
+    if (isLoggedIn) onLogin({ mobile: 'saved' })
   }, [])
 
   const sendOtp = async () => {
     setLoading(true)
     setError('')
 
-    // ✅ FIX: .single() ko .maybeSingle() se replace kiya hai (406 error fix karne ke liye)
     const { data: user, error: dbError } = await supabase
       .from('registered_users')
       .select('*')
@@ -48,21 +41,18 @@ const Login = ({ onLogin }: LoginProps) => {
       return
     }
 
-    // Call Edge Function send-otp
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile })
-      }
-    )
+    // ✅ Official Supabase invoke method (CORS automatically handle hota hai)
+    const { data, error: fnError } = await supabase.functions.invoke('send-otp', {
+      body: { mobile }
+    })
 
-    const result = await response.json()
-    if (result.success) {
+    if (fnError) {
+      console.error(fnError)
+      setError(fnError.message || 'Edge function error aaya. Function deploy check karo!')
+    } else if (data?.success) {
       setStep(2)
     } else {
-      setError(result.error || 'OTP send nahi hua. Try again!')
+      setError(data?.error || 'OTP send nahi hua. Try again!')
     }
     setLoading(false)
   }
@@ -72,13 +62,8 @@ const Login = ({ onLogin }: LoginProps) => {
     newOtp[index] = value.replace(/[^0-9]/g, '').slice(0, 1)
     setOtp(newOtp)
 
-    if (value && index < 3) {
-      inputsRef.current[index + 1]?.focus()
-    }
-
-    if (newOtp.every((digit) => digit !== '')) {
-      verifyOtp(newOtp.join(''))
-    }
+    if (value && index < 3) inputsRef.current[index + 1]?.focus()
+    if (newOtp.every((digit) => digit !== '')) verifyOtp(newOtp.join(''))
   }
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
@@ -92,30 +77,22 @@ const Login = ({ onLogin }: LoginProps) => {
     setError('')
     setIsSuccess(false)
 
-    // Call Edge Function verify-otp
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-otp`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile, code })
-      }
-    )
+    // ✅ Official Supabase invoke method
+    const { data, error: fnError } = await supabase.functions.invoke('verify-otp', {
+      body: { mobile, code }
+    })
 
-    const result = await response.json()
-    if (result.success) {
-      // Save login state
-      if (rememberMe) {
-        localStorage.setItem('admin_remember', 'true')
-      } else {
-        sessionStorage.setItem('admin_remember', 'true')
-      }
+    if (fnError) {
+      console.error(fnError)
+      setError(fnError.message || 'Verification error aaya!')
+    } else if (data?.success) {
+      if (rememberMe) localStorage.setItem('admin_remember', 'true')
+      else sessionStorage.setItem('admin_remember', 'true')
+      
       setIsSuccess(true)
-      setTimeout(() => {
-        onLogin({ mobile })
-      }, 1000)
+      setTimeout(() => onLogin({ mobile }), 1000)
     } else {
-      setError(result.message || 'Galat OTP! Dobara try karo.')
+      setError(data?.message || 'Galat OTP! Dobara try karo.')
       setOtp(['', '', '', ''])
       inputsRef.current[0]?.focus()
     }
@@ -163,24 +140,14 @@ const Login = ({ onLogin }: LoginProps) => {
             {otp.map((digit, index) => (
               <input
                 key={index}
-                ref={(el) => {
-                  inputsRef.current[index] = el;
-                }}
+                ref={(el) => { inputsRef.current[index] = el; }}
                 type="text"
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 inputMode="numeric"
-                style={{
-                  width: '50px',
-                  height: '50px',
-                  textAlign: 'center',
-                  fontSize: '24px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  outline: 'none'
-                }}
+                style={{ width: '50px', height: '50px', textAlign: 'center', fontSize: '24px', borderRadius: '8px', border: '1px solid #ccc', outline: 'none' }}
               />
             ))}
           </div>
