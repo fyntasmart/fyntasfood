@@ -3,10 +3,27 @@ import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
 import CustomerFavorites from './pages/CustomerFavorites';
+import CustomerCart from './pages/CustomerCart';
+import CustomerCheckout from './pages/CustomerCheckout';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // 🔥 CART STATE
+  const [cart, setCart] = useState<any[]>([]);
+  const [isCheckout, setIsCheckout] = useState(false);
+
+  // Add to Cart function (Home/Categories se call hoga)
+  const addToCart = (product: any) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
+      }
+      return [...prev, { ...product, qty: 1 }];
+    });
+  };
 
   const tabs = [
     { id: 'home', label: 'Home', icon: '🏠' },
@@ -39,14 +56,7 @@ const CustomerLayout = () => {
       )}
 
       {/* Drawer */}
-      <div style={{ 
-        position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', 
-        background: '#ffffff', zIndex: 300, 
-        transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', 
-        transition: 'transform 0.3s ease', 
-        boxShadow: '2px 0 10px rgba(0,0,0,0.1)', 
-        display: 'flex', flexDirection: 'column'
-      }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ background: '#1e40af', padding: '30px 20px', textAlign: 'center', color: '#ffffff' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#ffffff', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '35px', color: '#1e40af' }}>👤</div>
           <h3 style={{ margin: '0', fontWeight: 'bold' }}>Guest User</h3>
@@ -55,7 +65,7 @@ const CustomerLayout = () => {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
           {drawerItems.map(item => (
-            <div key={item.id} onClick={() => { setActiveTab(item.id); setIsDrawerOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '14px 20px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}>
+            <div key={item.id} onClick={() => { setActiveTab(item.id); setIsDrawerOpen(false); setIsCheckout(false); }} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '14px 20px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}>
               <span style={{ fontSize: '20px', color: '#1e40af' }}>{item.icon}</span>
               <span style={{ fontSize: '16px', fontWeight: '500', color: '#111827' }}>{item.label}</span>
             </div>
@@ -66,9 +76,7 @@ const CustomerLayout = () => {
           </div>
         </div>
 
-        <div style={{ padding: '10px 0', textAlign: 'center', color: '#999', fontSize: '12px' }}>
-          Version 1.0.0
-        </div>
+        <div style={{ padding: '10px 0', textAlign: 'center', color: '#999', fontSize: '12px' }}>Version 1.0.0</div>
       </div>
 
       {/* Header */}
@@ -82,14 +90,18 @@ const CustomerLayout = () => {
         <div style={{ fontSize: '20px', color: '#1e40af' }}>🔔</div>
       </div>
 
-      {/* ✅ CONTENT AREA - YAHAN PAGES LOAD HONGE */}
+      {/* Content Area */}
       <div style={{ padding: '0px' }}>
-        {activeTab === 'home' && <CustomerHome />}
-        {activeTab === 'categories' && <CustomerCategories />}
+        {activeTab === 'home' && <CustomerHome addToCart={addToCart} />}
+        {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile />}
-        {/* Cart aur baaki places ko abhi placeholder rakha hai */}
-        {activeTab === 'cart' && <div style={{ padding: '20px' }}><p>Cart (Empty)</p></div>}
+        
+        {/* CART & CHECKOUT LOGIC */}
+        {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
+        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
+
+        {/* Drawer ke baaki pages */}
         {activeTab === 'orders' && <div style={{ padding: '20px' }}><p>My Orders</p></div>}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
         {activeTab === 'addresses' && <div style={{ padding: '20px' }}><p>Manage Addresses</p></div>}
