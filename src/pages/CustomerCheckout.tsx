@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-const CustomerCheckout = ({ cart, setCart, onSuccess, onBack }: any) => {
+const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [address, setAddress] = useState('');
   const [mobile, setMobile] = useState('');
   const [name, setName] = useState('');
@@ -11,8 +11,8 @@ const CustomerCheckout = ({ cart, setCart, onSuccess, onBack }: any) => {
   const [tiers, setTiers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch Branches & Tiers on mount
-  useState(() => {
+  // Fetch Branches & Tiers on mount (useEffect)
+  useEffect(() => {
     const fetchData = async () => {
       const { data: b } = await supabase.from('branches').select('*').eq('is_active', true);
       const { data: t } = await supabase.from('delivery_tiers').select('*').order('max_km');
@@ -20,11 +20,10 @@ const CustomerCheckout = ({ cart, setCart, onSuccess, onBack }: any) => {
       if (t) setTiers(t);
     };
     fetchData();
-  });
+  }, []);
 
   // Calculate Delivery Charge based on branch & tiers
   const calculateCharge = (branch: any) => {
-    // Simple logic: Upar wala tier choose karo
     const dist = branch.delivery_range_km;
     const tier = tiers.find((t: any) => dist <= t.max_km);
     setDeliveryCharge(tier ? tier.price : (tiers[tiers.length - 1]?.price || 0));
