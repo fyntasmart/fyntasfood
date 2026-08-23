@@ -10,11 +10,11 @@ const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
-  // 🔥 CART STATE
+  // CART STATE
   const [cart, setCart] = useState<any[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
 
-  // Add to Cart function (Home/Categories se call hoga)
+  // Add to Cart function
   const addToCart = (product: any) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -56,7 +56,14 @@ const CustomerLayout = () => {
       )}
 
       {/* Drawer */}
-      <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ 
+        position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', 
+        background: '#ffffff', zIndex: 300, 
+        transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', 
+        transition: 'transform 0.3s ease', 
+        boxShadow: '2px 0 10px rgba(0,0,0,0.1)', 
+        display: 'flex', flexDirection: 'column'
+      }}>
         <div style={{ background: '#1e40af', padding: '30px 20px', textAlign: 'center', color: '#ffffff' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#ffffff', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '35px', color: '#1e40af' }}>👤</div>
           <h3 style={{ margin: '0', fontWeight: 'bold' }}>Guest User</h3>
@@ -97,7 +104,6 @@ const CustomerLayout = () => {
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile />}
         
-        {/* CART & CHECKOUT LOGIC */}
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
         {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
 
