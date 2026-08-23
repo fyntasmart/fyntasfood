@@ -7,8 +7,9 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   const [mobile, setMobile] = useState('')
+  const [name, setName] = useState('')
   const [otp, setOtp] = useState(['', '', '', ''])
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(1) // 1 = Mobile, 2 = OTP, 3 = Name
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
@@ -22,7 +23,7 @@ const Login = ({ onLogin }: LoginProps) => {
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('admin_remember') === 'true' || sessionStorage.getItem('admin_remember') === 'true'
-    if (isLoggedIn) onLogin({ mobile: 'saved' })
+    if (isLoggedIn) onLogin({ mobile: 'saved', name: 'Saved User' })
   }, [])
 
   const sendOtp = async () => {
@@ -46,7 +47,6 @@ const Login = ({ onLogin }: LoginProps) => {
       })
       const data = await res.json()
       
-      // ✅ Working code returns status: 'success'
       if (data.status === 'success') {
         setStep(2)
       } else {
@@ -81,12 +81,15 @@ const Login = ({ onLogin }: LoginProps) => {
       })
       const data = await res.json()
 
-      // ✅ Working code returns status: 'success'
       if (data.status === 'success') {
-        if (rememberMe) localStorage.setItem('admin_remember', 'true')
-        else sessionStorage.setItem('admin_remember', 'true')
-        setIsSuccess(true)
-        setTimeout(() => onLogin({ mobile }), 1000)
+        // OTP sahi hai, ab Name poocho (Step 3)
+        setOtp(['', '', '', ''])
+        setStep(3) 
+        // Name input focus karne ke liye
+        setTimeout(() => {
+          const nameInput = document.getElementById('name-input') as HTMLInputElement;
+          if(nameInput) nameInput.focus();
+        }, 100);
       } else {
         setError(data.message || 'Invalid OTP. Try again.')
         setOtp(['', '', '', ''])
@@ -98,9 +101,32 @@ const Login = ({ onLogin }: LoginProps) => {
     setLoading(false)
   }
 
+  const saveNameAndLogin = async () => {
+    if (!name.trim()) {
+      setError('Name dalna zaroori hai!'); return;
+    }
+
+    setLoading(true); setError('')
+
+    // Naam ko Database mein save karo (registered_users table)
+    const { error: updateError } = await supabase
+      .from('registered_users')
+      .update({ name: name.trim() })
+      .eq('mobile', mobile)
+      
+    if(updateError) console.log('Name update error:', updateError)
+
+    if (rememberMe) localStorage.setItem('admin_remember', 'true')
+    else sessionStorage.setItem('admin_remember', 'true')
+
+    setIsSuccess(true)
+    setTimeout(() => onLogin({ mobile, name }), 1000)
+  }
+
   return (
     <div style={{ padding: '20px', maxWidth: '400px', margin: '50px auto', fontFamily: 'sans-serif' }}>
-      {step === 1 ? (
+      {/* STEP 1: Mobile */}
+      {step === 1 && (
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: '#4f46e5', marginBottom: '10px' }}>FYNTAS Login</h2>
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Apna registered mobile number daalein</p>
@@ -114,7 +140,10 @@ const Login = ({ onLogin }: LoginProps) => {
             {loading ? 'Sending OTP...' : 'Get OTP'}
           </button>
         </div>
-      ) : (
+      )}
+
+      {/* STEP 2: OTP */}
+      {step === 2 && (
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: '#4f46e5', marginBottom: '10px' }}>OTP Verification</h2>
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Enter the 4-digit code sent to <b>{mobile}</b></p>
@@ -124,10 +153,33 @@ const Login = ({ onLogin }: LoginProps) => {
             ))}
           </div>
           {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
-          {isSuccess && <p style={{ color: 'green', fontSize: '16px', fontWeight: 'bold' }}>Verified successfully! Logging in...</p>}
           <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px' }}>
             Change number
           </button>
+        </div>
+      )}
+
+      {/* STEP 3: Name (Must) */}
+      {step === 3 && (
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ color: '#4f46e5', marginBottom: '10px' }}>Aapka Naam Kya Hai?</h2>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Profile ke liye Naam dalna zaroori hai</p>
+          <input 
+            id="name-input"
+            type="text" 
+            placeholder="Apna pura naam likhein" 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px' }} 
+          />
+          {error && <p style={{ color: 'red', fontSize: '14px', marginBottom: '10px' }}>{error}</p>}
+          {isSuccess ? (
+             <p style={{ color: 'green', fontSize: '16px', fontWeight: 'bold' }}>Verified successfully! Logging in...</p>
+          ) : (
+             <button onClick={saveNameAndLogin} disabled={loading} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+              {loading ? 'Saving...' : 'Continue'}
+            </button>
+          )}
         </div>
       )}
     </div>
