@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-const CustomerCategories = ({ addToCart }: any) => {
+const CustomerCategories = ({ addToCart, onProductClick }: any) => {
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [selectedCat, setSelectedCat] = useState('');
@@ -41,21 +41,17 @@ const CustomerCategories = ({ addToCart }: any) => {
         ))}
       </div>
 
-      {/* Right Products (Add to Cart Button ke saath) */}
+      {/* Right Products */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <h3 style={{ margin: '10px 0', color: '#000000' }}>Products</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {products.map(p => (
-            <div key={p.id} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', border: '1px solid #e5e7eb' }}>
+            <div key={p.id} onClick={() => onProductClick(p)} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', border: '1px solid #e5e7eb', cursor: 'pointer' }}>
               <img src={p.image_url || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '8px', marginBottom: '5px' }} />
               <p style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
                 <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
-                {/* ✅ Add to Cart Button */}
-                <button 
-                  onClick={() => addToCart(p)} 
-                  style={{ background: '#1e40af', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                >🛒 Add</button>
+                <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} style={{ background: '#1e40af', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🛒 Add</button>
               </div>
             </div>
           ))}
