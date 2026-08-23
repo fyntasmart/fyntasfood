@@ -6,8 +6,9 @@ interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
-interface Order { id: string; customer_name: string; total_amount: number; status: string; created_at: string; }
-interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
+interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
+interface OrderItem { id: string; order_id: string; product_id: string; quantity: number; price: number; }
+interface DeliveryBoy { id: string; name: string; mobile: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
@@ -23,12 +24,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
-
-  // App Content States
   const [appPages, setAppPages] = useState<AppPage[]>([]);
+
   const [selectedPage, setSelectedPage] = useState('about');
   const [currentContent, setCurrentContent] = useState('');
 
@@ -85,13 +86,14 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
 
   const fetchData = async () => {
-    const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
+    const [b, s, t, c, p, o, oi, d, cust, bn, pages] = await Promise.all([
       supabase.from('branches').select('*'),
       supabase.from('delivery_settings').select('*').single(),
       supabase.from('delivery_tiers').select('*').order('min_km'),
       supabase.from('categories').select('*').order('created_at', { ascending: false }),
       supabase.from('products').select('*').order('created_at', { ascending: false }),
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
+      supabase.from('order_items').select('*'),
       supabase.from('delivery_boys').select('*'),
       supabase.from('customers').select('*').order('created_at', { ascending: false }),
       supabase.from('banners').select('*').order('created_at', { ascending: false }),
@@ -103,6 +105,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (c.data) setCategories(c.data);
     if (p.data) setProducts(p.data);
     if (o.data) setOrders(o.data);
+    if (oi.data) setOrderItems(oi.data);
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
@@ -119,7 +122,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // App Content Logic
   const handleSelectPage = (key: string) => {
     setSelectedPage(key);
     const page = appPages.find(p => p.page_key === key);
@@ -137,6 +139,18 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     } else {
       alert('Error: ' + error.message);
     }
+  };
+
+  // Order Management Functions
+  const updateOrderStatus = async (id: string, status: string) => {
+    await supabase.from('orders').update({ status }).eq('id', id);
+    fetchData();
+  };
+
+  const assignDeliveryBoy = async (orderId: string, boyId: string) => {
+    if (!boyId) return;
+    await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId);
+    fetchData();
   };
 
   const addBanner = async () => {
@@ -316,6 +330,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .btn-black { background: #111827; }
         .btn-green { background: #059669; }
         .btn-red { background: #dc2626; }
+        .btn-blue { background: #2563eb; }
         .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
         .active { background: #d1fae5; color: #065f46; }
         .inactive { background: #fee2e2; color: #991b1b; }
@@ -356,6 +371,51 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{products.length}</h2><p>Products</p></div>
               <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{deliveryBoys.length}</h2><p>Delivery Boys</p></div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="panel">
+            <h3>Customer Orders ({orders.length})</h3>
+            {orders.length === 0 ? <p>Abhi koi order nahi aaya!</p> : (
+              <table>
+                <thead><tr><th>Order ID</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Status</th><th>Delivery Boy</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {orders.map(order => {
+                    const itemDetails = orderItems.filter(oi => oi.order_id === order.id);
+                    const assignedBoy = deliveryBoys.find(b => b.id === order.delivery_boy_id);
+                    return (
+                      <tr key={order.id}>
+                        <td style={{ fontSize: '12px' }}>#{order.id.slice(0, 6)}</td>
+                        <td>{order.customer_name}<br /><span style={{ fontSize: '11px', color: '#666' }}>{order.address}</span></td>
+                        <td>{order.customer_mobile}</td>
+                        <td>₹{order.total_amount}</td>
+                        <td>
+                          <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value)} style={{ padding: '5px', width: 'auto' }}>
+                            <option value="pending">Pending</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
+                            <option value="delivered">Delivered</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '5px', width: 'auto' }}>
+                            <option value="">Assign Boy</option>
+                            {deliveryBoys.filter(b => b.is_active).map(boy => (
+                              <option key={boy.id} value={boy.id}>{boy.name}</option>
+                            ))}
+                          </select>
+                          {assignedBoy && <span style={{ display: 'block', fontSize: '11px', color: '#059669' }}>To: {assignedBoy.name}</span>}
+                        </td>
+                        <td>
+                          <button className="btn btn-blue" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => { updateOrderStatus(order.id, 'delivered'); alert('Order Delivered!'); }}>Mark Delivered</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
@@ -522,8 +582,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             </table>
           </div>
         )}
-
-        {activeTab === 'orders' && <div className="panel"><h3>Orders</h3>{orders.length === 0 ? <p>Abhi koi order nahi!</p> : <p>Total Orders: {orders.length}</p>}</div>}
 
         {activeTab === 'delivery' && (
           <div className="panel">
