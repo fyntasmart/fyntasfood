@@ -16,26 +16,18 @@ const Login = ({ onLogin }: LoginProps) => {
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([])
 
-  // OTP inputs focus management
   useEffect(() => {
-    if (step === 2) {
-      inputsRef.current[0]?.focus()
-    }
+    if (step === 2) inputsRef.current[0]?.focus()
   }, [step])
 
-  // Check if user is already logged in
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('admin_remember') === 'true' || sessionStorage.getItem('admin_remember') === 'true'
-    if (isLoggedIn) {
-      onLogin({ mobile: 'saved' })
-    }
+    if (isLoggedIn) onLogin({ mobile: 'saved' })
   }, [])
 
   const sendOtp = async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
 
-    // 1. Check if mobile is registered
     const { data: user, error: dbError } = await supabase
       .from('registered_users')
       .select('*')
@@ -43,27 +35,25 @@ const Login = ({ onLogin }: LoginProps) => {
       .maybeSingle()
 
     if (dbError || !user) {
-      setError('Yeh mobile number registered nahi hai!')
-      setLoading(false)
-      return
+      setError('Yeh mobile number registered nahi hai!'); setLoading(false); return
     }
 
-    // 2. Call Edge Function send-otp (using invoke to avoid CORS issues)
-    const { data, error: fnError } = await supabase.functions.invoke('send-otp', {
-      body: { mobile }
-    })
-
-    if (fnError) {
-      // Exact error message from Edge Function
-      setError(fnError.message || 'Edge function error aaya. Function deploy check karo!')
-    } else if (data?.success) {
-      // Agar SMS fail hua hai, toh Edge Function debugOtp bhej raha hai
-      if (data.debugOtp) {
-        setError(`Test Mode - SMS nahi aaya toh yeh OTP use karo: ${data.debugOtp}`)
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile })
+      })
+      const data = await res.json()
+      
+      // ✅ Working code returns status: 'success'
+      if (data.status === 'success') {
+        setStep(2)
+      } else {
+        setError(data.message || 'OTP send nahi hua.')
       }
-      setStep(2)
-    } else {
-      setError(data?.error || 'OTP send nahi hua. Try again!')
+    } catch (e) {
+      setError('Network error: ' + (e as Error).message)
     }
     setLoading(false)
   }
@@ -72,49 +62,38 @@ const Login = ({ onLogin }: LoginProps) => {
     const newOtp = [...otp]
     newOtp[index] = value.replace(/[^0-9]/g, '').slice(0, 1)
     setOtp(newOtp)
-
-    if (value && index < 3) {
-      inputsRef.current[index + 1]?.focus()
-    }
-
-    if (newOtp.every((digit) => digit !== '')) {
-      verifyOtp(newOtp.join(''))
-    }
+    if (value && index < 3) inputsRef.current[index + 1]?.focus()
+    if (newOtp.every((digit) => digit !== '')) verifyOtp(newOtp.join(''))
   }
 
   const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus()
-    }
+    if (e.key === 'Backspace' && !otp[index] && index > 0) inputsRef.current[index - 1]?.focus()
   }
 
   const verifyOtp = async (code: string) => {
-    setLoading(true)
-    setError('')
-    setIsSuccess(false)
+    setLoading(true); setError(''); setIsSuccess(false)
 
-    // Call Edge Function verify-otp
-    const { data, error: fnError } = await supabase.functions.invoke('verify-otp', {
-      body: { mobile, code }
-    })
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, code })
+      })
+      const data = await res.json()
 
-    if (fnError) {
-      console.error(fnError)
-      setError(fnError.message || 'Verification error aaya!')
-    } else if (data?.success) {
-      // Save login state
-      if (rememberMe) {
-        localStorage.setItem('admin_remember', 'true')
+      // ✅ Working code returns status: 'success'
+      if (data.status === 'success') {
+        if (rememberMe) localStorage.setItem('admin_remember', 'true')
+        else sessionStorage.setItem('admin_remember', 'true')
+        setIsSuccess(true)
+        setTimeout(() => onLogin({ mobile }), 1000)
       } else {
-        sessionStorage.setItem('admin_remember', 'true')
+        setError(data.message || 'Invalid OTP. Try again.')
+        setOtp(['', '', '', ''])
+        inputsRef.current[0]?.focus()
       }
-      
-      setIsSuccess(true)
-      setTimeout(() => onLogin({ mobile }), 1000)
-    } else {
-      setError(data?.message || 'Galat OTP! Dobara try karo.')
-      setOtp(['', '', '', ''])
-      inputsRef.current[0]?.focus()
+    } catch (e) {
+      setError('Verification error: ' + (e as Error).message)
     }
     setLoading(false)
   }
@@ -125,70 +104,28 @@ const Login = ({ onLogin }: LoginProps) => {
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: '#4f46e5', marginBottom: '10px' }}>FYNTAS Login</h2>
           <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Apna registered mobile number daalein</p>
-          
-          <input 
-            type="text" 
-            placeholder="Mobile Number" 
-            value={mobile} 
-            onChange={(e) => setMobile(e.target.value)} 
-            style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px' }} 
-          />
-          
+          <input type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px' }} />
           {error && <p style={{ color: 'red', fontSize: '14px', marginBottom: '10px' }}>{error}</p>}
-          
           <label style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', cursor: 'pointer', justifyContent: 'center', fontSize: '14px' }}>
             <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
             <span style={{ marginLeft: '5px' }}>Save login (Jab tak logout nahi karenge)</span>
           </label>
-
-          <button 
-            onClick={sendOtp} 
-            disabled={loading} 
-            style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
+          <button onClick={sendOtp} disabled={loading} style={{ width: '100%', padding: '12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
             {loading ? 'Sending OTP...' : 'Get OTP'}
           </button>
         </div>
       ) : (
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ color: '#4f46e5', marginBottom: '10px' }}>OTP Verification</h2>
-          <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
-            Enter the 4-digit code sent to <b>{mobile}</b>
-          </p>
-          
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>Enter the 4-digit code sent to <b>{mobile}</b></p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
             {otp.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => {
-                  inputsRef.current[index] = el;
-                }}
-                type="text"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleOtpChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                inputMode="numeric"
-                style={{
-                  width: '50px',
-                  height: '50px',
-                  textAlign: 'center',
-                  fontSize: '24px',
-                  borderRadius: '8px',
-                  border: '1px solid #ccc',
-                  outline: 'none'
-                }}
-              />
+              <input key={index} ref={(el) => { inputsRef.current[index] = el; }} type="text" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} inputMode="numeric" style={{ width: '50px', height: '50px', textAlign: 'center', fontSize: '24px', borderRadius: '8px', border: '1px solid #ccc', outline: 'none' }} />
             ))}
           </div>
-          
           {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
           {isSuccess && <p style={{ color: 'green', fontSize: '16px', fontWeight: 'bold' }}>Verified successfully! Logging in...</p>}
-          
-          <button 
-            onClick={() => setStep(1)} 
-            style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px' }}
-          >
+          <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', textDecoration: 'underline', marginTop: '10px' }}>
             Change number
           </button>
         </div>
