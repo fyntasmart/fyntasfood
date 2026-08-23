@@ -9,6 +9,8 @@ interface Product { id: string; name: string; sku: string; price: number; stock:
 interface Order { id: string; customer_name: string; total_amount: number; status: string; created_at: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
+// Banner Interface add kiya
+interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -23,6 +25,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  // Banner State add kiya
+  const [banners, setBanners] = useState<Banner[]>([]);
+
+  // Banner Form States
+  const [bannerTitle, setBannerTitle] = useState('');
+  const [bannerImg, setBannerImg] = useState<File | null>(null);
 
   // Product Form States
   const [prodName, setProdName] = useState('');
@@ -78,9 +86,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [boyMenu, setBoyMenu] = useState(false);
   const [editingBoy, setEditingBoy] = useState(false);
 
-  // Fetch Data
+  // Fetch Data (Banner fetch add kiya)
   const fetchData = async () => {
-    const [b, s, t, c, p, o, d, cust] = await Promise.all([
+    const [b, s, t, c, p, o, d, cust, bn] = await Promise.all([
       supabase.from('branches').select('*'),
       supabase.from('delivery_settings').select('*').single(),
       supabase.from('delivery_tiers').select('*').order('min_km'),
@@ -88,7 +96,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       supabase.from('products').select('*').order('created_at', { ascending: false }),
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
       supabase.from('delivery_boys').select('*'),
-      supabase.from('customers').select('*').order('created_at', { ascending: false })
+      supabase.from('customers').select('*').order('created_at', { ascending: false }),
+      supabase.from('banners').select('*').order('created_at', { ascending: false })
     ]);
     if (b.data) setBranches(b.data);
     if (s.data) setSettings(s.data);
@@ -98,6 +107,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (o.data) setOrders(o.data);
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
+    if (bn.data) setBanners(bn.data);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -111,6 +121,24 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
+  // Banner Functions (Add, Toggle, Delete)
+  const addBanner = async () => {
+    if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
+    let imgUrl = '';
+    if (bannerImg) imgUrl = await uploadImage(bannerImg);
+    await supabase.from('banners').insert({ title: bannerTitle, image_url: imgUrl });
+    setBannerTitle(''); setBannerImg(null); fetchData();
+  };
+  const toggleBannerActive = async (banner: Banner) => {
+    await supabase.from('banners').update({ is_active: !banner.is_active }).eq('id', banner.id);
+    fetchData();
+  };
+  const deleteBanner = async (id: string) => {
+    if (!confirm('Banner delete karna hai?')) return;
+    await supabase.from('banners').delete().eq('id', id);
+    fetchData();
+  };
+
   // Add Category
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
@@ -120,7 +148,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
-  // Add Product (With Units, 4 Images, GST)
+  // Add Product
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     
@@ -252,7 +280,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // Tabs
+  // Tabs (Banner tab add kiya)
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'orders', label: 'Orders', icon: '📦' },
@@ -262,6 +290,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
     { id: 'branches', label: 'Branches', icon: '🏬' },
     { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' }, // Banner Tab
   ];
 
   return (
@@ -318,6 +347,35 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{products.length}</h2><p>Products</p></div>
               <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{deliveryBoys.length}</h2><p>Delivery Boys</p></div>
             </div>
+          </div>
+        )}
+
+        {/* BANNERS TAB UI */}
+        {activeTab === 'banners' && (
+          <div className="panel">
+            <h3>Add New Banner</h3>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input placeholder="Banner Title (e.g. Grocery at Home)" value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
+              <input type="file" accept="image/*" onChange={(e) => setBannerImg(e.target.files?.[0] || null)} />
+              <button className="btn btn-black" onClick={addBanner}>Add Banner</button>
+            </div>
+            <h3>All Banners</h3>
+            <table>
+              <thead><tr><th>Image</th><th>Title</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {banners.map(banner => (
+                  <tr key={banner.id}>
+                    <td><img src={banner.image_url} alt="banner" style={{ width: '80px', height: '40px', objectFit: 'cover', borderRadius: '5px' }} /></td>
+                    <td>{banner.title}</td>
+                    <td><span className={`status-pill ${banner.is_active ? 'active' : 'inactive'}`}>{banner.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                      <button className="btn btn-green" onClick={() => toggleBannerActive(banner)}>Toggle</button>
+                      <button className="btn btn-red" style={{ marginLeft: '5px' }} onClick={() => deleteBanner(banner.id)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
