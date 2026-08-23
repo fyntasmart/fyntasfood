@@ -136,6 +136,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
+  // ✅ ADD PRODUCT MEIN ERROR ALERT ADD KIYA HAI
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     
@@ -148,7 +149,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       if (url) galleryUrls.push(url);
     }
 
-    await supabase.from('products').insert({
+    const { error } = await supabase.from('products').insert({
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
       unit: prodUnit,
@@ -159,6 +160,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
       gst_enabled: gstEnabled, gst_rate: gstRate
     });
+
+    if (error) {
+      alert('Product add nahi hua: ' + error.message);
+      return;
+    }
 
     setProdName(''); setProdSku(''); setProdPrice(''); setProdStock('');
     setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0);
