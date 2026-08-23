@@ -5,22 +5,23 @@ import CustomerProfile from './pages/CustomerProfile';
 import CustomerFavorites from './pages/CustomerFavorites';
 import CustomerCart from './pages/CustomerCart';
 import CustomerCheckout from './pages/CustomerCheckout';
+import ProductPage from './pages/ProductPage';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
-
-  // 🔥 Toast (Popup) State
-  const [toast, setToast] = useState('');
-
-  // 🔥 Product Details Modal State
+  
+  // Product Page State
+  const [isProductPage, setIsProductPage] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+
+  const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 2000); // 2 second baad hide ho jayega
+    setTimeout(() => setToast(''), 2000);
   };
 
   const addToCart = (product: any) => {
@@ -31,8 +32,19 @@ const CustomerLayout = () => {
       }
       return [...prev, { ...product, qty: 1 }];
     });
-    // 🔥 Toast trigger
     showToast('Item Added to Cart ✔️');
+  };
+
+  // Product click par Full Page kholo
+  const handleProductClick = (product: any) => {
+    setSelectedProduct(product);
+    setIsProductPage(true);
+  };
+
+  // Back button
+  const handleBack = () => {
+    setIsProductPage(false);
+    setSelectedProduct(null);
   };
 
   const tabs = [
@@ -57,29 +69,24 @@ const CustomerLayout = () => {
     { id: 'refund', label: 'Refund Policy', icon: '💰' },
   ];
 
+  // 🔥 AGAR PRODUCT PAGE OPEN HAI TO POPUP NAHI, PURA PAGE DIKHEGA
+  if (isProductPage && selectedProduct) {
+    return (
+      <ProductPage 
+        product={selectedProduct} 
+        addToCart={addToCart} 
+        onBack={handleBack} 
+      />
+    );
+  }
+
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', maxWidth: '480px', margin: '0 auto', paddingBottom: '80px', background: '#ffffff', minHeight: '100vh', position: 'relative' }}>
       
-      {/* 🔥 Toast Popup */}
+      {/* Toast Popup */}
       {toast && (
         <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#1e40af', color: '#fff', padding: '10px 20px', borderRadius: '20px', zIndex: 500, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
           {toast}
-        </div>
-      )}
-
-      {/* 🔥 Product Details Modal */}
-      {selectedProduct && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedProduct(null)}>
-          <div style={{ background: '#fff', borderRadius: '15px', padding: '20px', maxWidth: '350px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setSelectedProduct(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#111827' }}>✕</button>
-            </div>
-            <img src={selectedProduct.image_url || 'https://via.placeholder.com/200'} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px' }} />
-            <h3 style={{ margin: '10px 0 5px', color: '#111827' }}>{selectedProduct.name}</h3>
-            <p style={{ color: '#666', fontSize: '14px', margin: '0 0 10px' }}>{selectedProduct.description || 'Description nahi hai'}</p>
-            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e40af' }}>₹{selectedProduct.price} / {selectedProduct.unit}</p>
-            <button onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }} style={{ width: '100%', padding: '12px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Add to Cart</button>
-          </div>
         </div>
       )}
 
@@ -116,9 +123,9 @@ const CustomerLayout = () => {
 
       {/* Content Area */}
       <div style={{ padding: '0px' }}>
-        {/* onProductClick prop add kiya */}
-        {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={setSelectedProduct} />}
-        {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={setSelectedProduct} />}
+        {/* onProductClick = handleProductClick */}
+        {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={handleProductClick} />}
+        {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile />}
         
