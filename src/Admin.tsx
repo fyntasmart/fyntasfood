@@ -25,6 +25,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [tiers, setTiers] = useState<Tier[]>([]);
+  const [deliveryBoys, setDeliveryBoys] = useState<any[]>([]);
 
   // Delivery Boy States
   const [dbName, setDbName] = useState('');
@@ -32,7 +33,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
-  // Fetch all data
+  // 🔥 SIRF EK useEffect (Duplicate hata diya)
   useEffect(() => {
     const fetchData = async () => {
       const { data: b } = await supabase.from('branches').select('*').order('name');
@@ -43,29 +44,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       if (b) setBranches(b);
       if (s) setSettings(s);
       if (t) setTiers(t);
-      // Delivery boy fetch logic yahan rakhna hai... Actually deliveryBoys state missing hai, hum isko bhi add karte hain.
-      // Let's add deliveryBoys state and set it.
-      // But the original code didn't have it, we can add it now.
-      // For simplicity, we skip deliveryBoys for now (modal part is complex). But the error is about unused d, so we can just not destructure.
-      // Actually we need deliveryBoys for modal, but let's include it properly.
-    };
-    fetchData();
-  }, []);
-
-  // We need deliveryBoys state:
-  const [deliveryBoys, setDeliveryBoys] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const { data: b } = await supabase.from('branches').select('*').order('name');
-      const { data: s } = await supabase.from('delivery_settings').select('*').single();
-      const { data: t } = await supabase.from('delivery_tiers').select('*').order('min_km');
-      const { data: d } = await supabase.from('delivery_boys').select('*').order('created_at', { ascending: false });
-      
-      if (b) setBranches(b);
-      if (s) setSettings(s);
-      if (t) setTiers(t);
-      if (d) setDeliveryBoys(d);
+      if (d) setDeliveryBoys(d); // ✅ Yahan 'd' use ho raha hai
     };
     fetchData();
   }, []);
@@ -113,7 +92,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     } else {
       alert('Delivery Boy add ho gaya!');
       setDbName(''); setDbMobile(''); setDbAadhar(''); setDbAddress('');
-      // Refresh list
       const { data: d } = await supabase.from('delivery_boys').select('*').order('created_at', { ascending: false });
       if (d) setDeliveryBoys(d);
     }
@@ -181,7 +159,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             <div style={{ color: '#fff' }}>{branch.name} <span style={{ color: '#9aa4bd', fontSize: '12px' }}>({branch.delivery_range_km} KM)</span></div>
             <div style={{ display: 'flex', gap: '10px' }}>
                <input style={{ width: '60px' }} type="number" defaultValue={branch.delivery_range_km} onBlur={(e) => { 
-                 // Update range logic
                  const newRange = parseFloat(e.target.value);
                  supabase.from('branches').update({ delivery_range_km: newRange }).eq('id', branch.id).then(() => {
                    setBranches(branches.map(b => b.id === branch.id ? { ...b, delivery_range_km: newRange } : b));
