@@ -35,12 +35,12 @@ const Login = ({ onLogin }: LoginProps) => {
     setLoading(true)
     setError('')
 
-    // Check if mobile is registered
+    // ✅ FIX: .single() ko .maybeSingle() se replace kiya hai (406 error fix karne ke liye)
     const { data: user, error: dbError } = await supabase
       .from('registered_users')
       .select('*')
       .eq('mobile', mobile)
-      .single()
+      .maybeSingle()
 
     if (dbError || !user) {
       setError('Yeh mobile number registered nahi hai!')
@@ -163,7 +163,6 @@ const Login = ({ onLogin }: LoginProps) => {
             {otp.map((digit, index) => (
               <input
                 key={index}
-                // ✅ Yahan fix kiya hai (return type void karne ke liye)
                 ref={(el) => {
                   inputsRef.current[index] = el;
                 }}
