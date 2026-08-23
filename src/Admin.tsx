@@ -21,6 +21,7 @@ interface DeliveryBoy {
   mobile: string;
   aadhar: string;
   address: string;
+  is_active: boolean; // ✅ Yeh line add ki hai error fix karne ke liye
 }
 
 const Admin = ({ onLogout }: { onLogout: () => void }) => {
@@ -103,7 +104,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   // Toggle Delivery Boy Active
   const toggleBoyActive = async (boy: DeliveryBoy) => {
-    // Simple update logic
     const { error } = await supabase.from('delivery_boys').update({ is_active: !boy.is_active }).eq('id', boy.id);
     if (!error) {
       setDeliveryBoys(deliveryBoys.map(b => b.id === boy.id ? { ...b, is_active: !b.is_active } : b));
