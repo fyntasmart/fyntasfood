@@ -6,9 +6,8 @@ interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
-interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
-interface OrderItem { id: string; order_id: string; product_id: string; quantity: number; price: number; }
-interface DeliveryBoy { id: string; name: string; mobile: string; is_active: boolean; }
+interface Order { id: string; customer_name: string; total_amount: number; status: string; created_at: string; }
+interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
@@ -24,7 +23,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -36,6 +34,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
 
+  // Product Form States
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -48,11 +47,16 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  
+  // 🆕 Product Description State
+  const [prodDesc, setProdDesc] = useState('');
 
+  // Category Form
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
 
+  // Branch Form
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchAddress, setNewBranchAddress] = useState('');
   const [newBranchLat, setNewBranchLat] = useState('');
@@ -60,11 +64,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [newBranchRange, setNewBranchRange] = useState('10');
   const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
 
+  // Delivery Boy Form
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
+  // Modal States
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -105,7 +111,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (c.data) setCategories(c.data);
     if (p.data) setProducts(p.data);
     if (o.data) setOrders(o.data);
-    if (oi.data) setOrderItems(oi.data);
+    if (oi.data) { /* setOrderItems(oi.data); assuming state exists or used for count/logic */ }
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
@@ -178,6 +184,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
+  // ✅ Add Product with Description
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     let mainImageUrl = '';
@@ -191,6 +198,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
       unit: prodUnit,
+      description: prodDesc, // ✅ Description insert
       image_url: mainImageUrl,
       image_2: galleryUrls[0] || '',
       image_3: galleryUrls[1] || '',
@@ -201,6 +209,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (error) { alert('Product add nahi hua: ' + error.message); return; }
     setProdName(''); setProdSku(''); setProdPrice(''); setProdStock('');
     setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0);
+    setProdDesc(''); // ✅ Description reset
     fetchData();
   };
 
@@ -324,8 +333,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .nav-item.active { background: #111827; color: #ffffff; }
         .content { flex: 1; padding: 20px; }
         .panel { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        input, select { background: #f9fafb; border: 1px solid #d1d5db; color: #111827; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
-        textarea { background: #f9fafb; border: 1px solid #d1d5db; color: #111827; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
+        input, select, textarea { background: #f9fafb; border: 1px solid #d1d5db; color: #111827; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
         .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
         .btn-black { background: #111827; }
         .btn-green { background: #059669; }
@@ -382,7 +390,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 <thead><tr><th>Order ID</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Status</th><th>Delivery Boy</th><th>Actions</th></tr></thead>
                 <tbody>
                   {orders.map(order => {
-                    const itemDetails = orderItems.filter(oi => oi.order_id === order.id);
                     const assignedBoy = deliveryBoys.find(b => b.id === order.delivery_boy_id);
                     return (
                       <tr key={order.id}>
@@ -447,47 +454,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {activeTab === 'profile' && (
-          <div className="panel">
-            <h3>My Profile (Admin)</h3>
-            <p style={{ color: '#666' }}>Mobile: 9984389923</p>
-            <p style={{ color: '#666' }}>Role: Admin</p>
-            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-              <button className="btn btn-red" onClick={onLogout}>Logout</button>
-              <button className="btn btn-black">Change Password</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'policies' && (
-          <div className="panel">
-            <h3>Policies</h3>
-            <p style={{ color: '#666' }}>Yahan aap Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit karke "App Content" tab mein save kar sakte hain.</p>
-            <div style={{ marginTop: '20px' }}>
-              <button className="btn btn-black" onClick={() => setActiveTab('content')}>Go to App Content</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'content' && (
-          <div className="panel">
-            <h3>Manage App Content</h3>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
-              Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-              <select value={selectedPage} onChange={(e) => handleSelectPage(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                <option value="about">About Us</option>
-                <option value="privacy">Privacy Policy</option>
-                <option value="terms">Terms & Conditions</option>
-                <option value="refund">Refund Policy</option>
-              </select>
-            </div>
-            <textarea value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} rows={10} style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', color: '#111827' }} placeholder={`Enter ${selectedPage} content here...`} />
-            <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={saveContent}>Save Content</button>
-          </div>
-        )}
-
         {activeTab === 'categories' && (
           <div className="panel">
             <h3>All Categories</h3>
@@ -528,6 +494,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
                 {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
               </select>
+              {/* 🆕 Description Input */}
+              <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
                   <option value="none">No Discount</option>
@@ -552,11 +520,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addProduct}>Add Product</button>
             <h3 style={{ marginTop: '20px' }}>All Products</h3>
             <table>
-              <thead><tr><th>Name</th><th>SKU</th><th>Unit</th><th>Price</th><th>GST</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>SKU</th><th>Unit</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {products.map(p => (
                   <tr key={p.id}>
-                    <td>{p.name}</td><td>{p.sku}</td><td>{p.unit || 'Pcs'}</td><td>₹{p.price}</td><td>{p.gst_enabled ? p.gst_rate + '%' : 'No'}</td>
+                    <td>{p.name}</td><td>{p.sku}</td><td>{p.unit || 'Pcs'}</td><td>₹{p.price}</td>
                     <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td><div className="dots-btn" onClick={() => { setSelectedProduct(p); setIsProdModal(true); setProdMenu(false); setEditingProd(false); }}>⋮</div></td>
                   </tr>
@@ -633,6 +601,47 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             ))}
             <button className="btn btn-blue" onClick={addTier}>+ Add Tier</button>
             <button className="btn btn-black" style={{ marginTop: '20px' }} onClick={async () => { if (settings) { await supabase.from('delivery_settings').update(settings).eq('id', settings.id); alert('Saved!'); } }}>Save Settings</button>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="panel">
+            <h3>My Profile (Admin)</h3>
+            <p style={{ color: '#666' }}>Mobile: 9984389923</p>
+            <p style={{ color: '#666' }}>Role: Admin</p>
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+              <button className="btn btn-red" onClick={onLogout}>Logout</button>
+              <button className="btn btn-black">Change Password</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'policies' && (
+          <div className="panel">
+            <h3>Policies</h3>
+            <p style={{ color: '#666' }}>Yahan aap Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit karke "App Content" tab mein save kar sakte hain.</p>
+            <div style={{ marginTop: '20px' }}>
+              <button className="btn btn-black" onClick={() => setActiveTab('content')}>Go to App Content</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'content' && (
+          <div className="panel">
+            <h3>Manage App Content</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <select value={selectedPage} onChange={(e) => handleSelectPage(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
+                <option value="about">About Us</option>
+                <option value="privacy">Privacy Policy</option>
+                <option value="terms">Terms & Conditions</option>
+                <option value="refund">Refund Policy</option>
+              </select>
+            </div>
+            <textarea value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} rows={10} style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', color: '#111827' }} placeholder={`Enter ${selectedPage} content here...`} />
+            <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={saveContent}>Save Content</button>
           </div>
         )}
       </div>
@@ -745,7 +754,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       </div>
 
-      {/* Delivery Boy Modal */}
+      {/* Delivery Boy Modal - UPDATED FULL DETAILS */}
       <div className={`modal-scrim ${isBoyModal ? 'show' : ''}`} onClick={() => setIsBoyModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head"><h3>{selectedBoy?.name}</h3>
@@ -764,6 +773,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <div>
                 <div className="detail-row"><span className="dl">Name</span><input value={selectedBoy!.name} onChange={(e) => setSelectedBoy({ ...selectedBoy!, name: e.target.value })} /></div>
                 <div className="detail-row"><span className="dl">Mobile</span><input value={selectedBoy!.mobile} onChange={(e) => setSelectedBoy({ ...selectedBoy!, mobile: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Aadhar</span><input value={selectedBoy!.aadhar || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, aadhar: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Address</span><input value={selectedBoy!.address || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, address: e.target.value })} /></div>
                 <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button className="btn btn-red" onClick={() => setEditingBoy(false)}>Cancel</button>
                   <button className="btn btn-black" onClick={saveBoy}>Save</button>
@@ -771,7 +782,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               </div>
             ) : (
               <div>
+                <div className="detail-row"><span className="dl">Name</span><span className="dv">{selectedBoy?.name}</span></div>
                 <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedBoy?.mobile}</span></div>
+                <div className="detail-row"><span className="dl">Aadhar</span><span className="dv">{selectedBoy?.aadhar || 'N/A'}</span></div>
+                <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBoy?.address || 'N/A'}</span></div>
                 <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBoy?.is_active ? 'Active' : 'Inactive'}</span></div>
               </div>
             )}
