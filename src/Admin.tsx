@@ -10,6 +10,7 @@ interface Order { id: string; customer_name: string; total_amount: number; statu
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
+interface AppPage { id: string; page_key: string; content: string; }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -25,6 +26,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
+
+  // App Content States
+  const [appPages, setAppPages] = useState<AppPage[]>([]);
+  const [selectedPage, setSelectedPage] = useState('about');
+  const [currentContent, setCurrentContent] = useState('');
 
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
@@ -79,7 +85,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
 
   const fetchData = async () => {
-    const [b, s, t, c, p, o, d, cust, bn] = await Promise.all([
+    const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
       supabase.from('branches').select('*'),
       supabase.from('delivery_settings').select('*').single(),
       supabase.from('delivery_tiers').select('*').order('min_km'),
@@ -88,7 +94,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
       supabase.from('delivery_boys').select('*'),
       supabase.from('customers').select('*').order('created_at', { ascending: false }),
-      supabase.from('banners').select('*').order('created_at', { ascending: false })
+      supabase.from('banners').select('*').order('created_at', { ascending: false }),
+      supabase.from('app_pages').select('*')
     ]);
     if (b.data) setBranches(b.data);
     if (s.data) setSettings(s.data);
@@ -99,6 +106,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
+    if (pages.data && pages.data.length > 0) setAppPages(pages.data);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -109,6 +117,26 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (error) return '';
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);
     return data.publicUrl;
+  };
+
+  // App Content Logic
+  const handleSelectPage = (key: string) => {
+    setSelectedPage(key);
+    const page = appPages.find(p => p.page_key === key);
+    setCurrentContent(page ? page.content : '');
+  };
+
+  const saveContent = async () => {
+    const { error } = await supabase.from('app_pages').upsert(
+      { page_key: selectedPage, content: currentContent },
+      { onConflict: 'page_key' }
+    );
+    if (!error) {
+      alert('Content saved successfully!');
+      fetchData();
+    } else {
+      alert('Error: ' + error.message);
+    }
   };
 
   const addBanner = async () => {
@@ -136,19 +164,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
-  // ✅ ADD PRODUCT MEIN ERROR ALERT ADD KIYA HAI
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
-    
     let mainImageUrl = '';
     if (mainImage) mainImageUrl = await uploadImage(mainImage);
-
     const galleryUrls: string[] = [];
     for (const file of galleryImages) {
       const url = await uploadImage(file);
       if (url) galleryUrls.push(url);
     }
-
     const { error } = await supabase.from('products').insert({
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
@@ -160,12 +184,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
       gst_enabled: gstEnabled, gst_rate: gstRate
     });
-
-    if (error) {
-      alert('Product add nahi hua: ' + error.message);
-      return;
-    }
-
+    if (error) { alert('Product add nahi hua: ' + error.message); return; }
     setProdName(''); setProdSku(''); setProdPrice(''); setProdStock('');
     setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0);
     fetchData();
@@ -277,6 +296,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     { id: 'branches', label: 'Branches', icon: '🏬' },
     { id: 'charges', label: 'Delivery Charges', icon: '💰' },
     { id: 'banners', label: 'Banners', icon: '🖼️' },
+    { id: 'profile', label: 'My Profile', icon: '👤' },
+    { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
   return (
@@ -289,6 +311,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .content { flex: 1; padding: 20px; }
         .panel { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         input, select { background: #f9fafb; border: 1px solid #d1d5db; color: #111827; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
+        textarea { background: #f9fafb; border: 1px solid #d1d5db; color: #111827; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
         .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
         .btn-black { background: #111827; }
         .btn-green { background: #059669; }
@@ -361,6 +384,47 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="panel">
+            <h3>My Profile (Admin)</h3>
+            <p style={{ color: '#666' }}>Mobile: 9984389923</p>
+            <p style={{ color: '#666' }}>Role: Admin</p>
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+              <button className="btn btn-red" onClick={onLogout}>Logout</button>
+              <button className="btn btn-black">Change Password</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'policies' && (
+          <div className="panel">
+            <h3>Policies</h3>
+            <p style={{ color: '#666' }}>Yahan aap Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit karke "App Content" tab mein save kar sakte hain.</p>
+            <div style={{ marginTop: '20px' }}>
+              <button className="btn btn-black" onClick={() => setActiveTab('content')}>Go to App Content</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'content' && (
+          <div className="panel">
+            <h3>Manage App Content</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <select value={selectedPage} onChange={(e) => handleSelectPage(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
+                <option value="about">About Us</option>
+                <option value="privacy">Privacy Policy</option>
+                <option value="terms">Terms & Conditions</option>
+                <option value="refund">Refund Policy</option>
+              </select>
+            </div>
+            <textarea value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} rows={10} style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', color: '#111827' }} placeholder={`Enter ${selectedPage} content here...`} />
+            <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={saveContent}>Save Content</button>
           </div>
         )}
 
@@ -515,6 +579,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         )}
       </div>
 
+      {/* Modals */}
       {/* Category Modal */}
       <div className={`modal-scrim ${isCatModal ? 'show' : ''}`} onClick={() => setIsCatModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
