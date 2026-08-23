@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -11,10 +10,7 @@ interface Order { id: string; customer_name: string; total_amount: number; statu
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 
-// Indian Standard Units List (JSON se reference liya: pcs, kg, g)
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
-
-// Indian GST Rates
 const GST_RATES = [0, 5, 12, 18, 28];
 
 const Admin = ({ onLogout }: { onLogout: () => void }) => {
@@ -28,7 +24,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
-  // Product Form States (New)
+  // Product Form States
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -37,25 +33,25 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [prodUnit, setProdUnit] = useState('Pcs');
   const [discountType, setDiscountType] = useState('none');
   const [discountValue, setDiscountValue] = useState('');
-  
-  // GST States
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstRate, setGstRate] = useState(0);
-  
-  // Image Upload States (1 Main + 3 Gallery)
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
 
-  // Other Form States
+  // Category Form
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
+
+  // Branch Form
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchAddress, setNewBranchAddress] = useState('');
   const [newBranchLat, setNewBranchLat] = useState('');
   const [newBranchLng, setNewBranchLng] = useState('');
   const [newBranchRange, setNewBranchRange] = useState('10');
   const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
+
+  // Delivery Boy Form
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
@@ -76,6 +72,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [isBranchModal, setIsBranchModal] = useState(false);
   const [branchMenu, setBranchMenu] = useState(false);
   const [editingBranch, setEditingBranch] = useState(false);
+
   const [selectedBoy, setSelectedBoy] = useState<DeliveryBoy | null>(null);
   const [isBoyModal, setIsBoyModal] = useState(false);
   const [boyMenu, setBoyMenu] = useState(false);
@@ -127,11 +124,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     
-    // Upload 1 Main Image
     let mainImageUrl = '';
     if (mainImage) mainImageUrl = await uploadImage(mainImage);
 
-    // Upload 3 Gallery Images
     const galleryUrls: string[] = [];
     for (const file of galleryImages) {
       const url = await uploadImage(file);
@@ -141,16 +136,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     await supabase.from('products').insert({
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
-      unit: prodUnit, // Unit yahan add ho raha hai
-      image_url: mainImageUrl, // Main Image
-      image_2: galleryUrls[0] || '', // Gallery 1
-      image_3: galleryUrls[1] || '', // Gallery 2
-      image_4: galleryUrls[2] || '', // Gallery 3
+      unit: prodUnit,
+      image_url: mainImageUrl,
+      image_2: galleryUrls[0] || '',
+      image_3: galleryUrls[1] || '',
+      image_4: galleryUrls[2] || '',
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
-      gst_enabled: gstEnabled, gst_rate: gstRate // GST logic
+      gst_enabled: gstEnabled, gst_rate: gstRate
     });
 
-    // Reset Form
     setProdName(''); setProdSku(''); setProdPrice(''); setProdStock('');
     setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0);
     fetchData();
@@ -199,6 +193,63 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (!confirm('Product delete karna hai?')) return;
     await supabase.from('products').delete().eq('id', id);
     setIsProdModal(false); fetchData();
+  };
+
+  // Branch CRUD
+  const addBranch = async () => {
+    if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
+    await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
+    setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); setNewBranchMaxKm('15'); fetchData();
+  };
+  const saveBranch = async () => {
+    if (!selectedBranch) return;
+    await supabase.from('branches').update(selectedBranch).eq('id', selectedBranch.id);
+    setEditingBranch(false); setBranchMenu(false); fetchData();
+  };
+  const deleteBranch = async (id: string) => {
+    if (!confirm('Branch delete karna hai?')) return;
+    await supabase.from('branches').delete().eq('id', id);
+    setIsBranchModal(false); fetchData();
+  };
+  const toggleBranchActive = async (branch: Branch) => {
+    await supabase.from('branches').update({ is_active: !branch.is_active }).eq('id', branch.id);
+    setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
+  };
+
+  // Delivery Boy CRUD
+  const addDeliveryBoy = async () => {
+    if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
+    await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
+    setDbName(''); setDbMobile(''); setDbAadhar(''); setDbAddress(''); fetchData();
+  };
+  const saveBoy = async () => {
+    if (!selectedBoy) return;
+    await supabase.from('delivery_boys').update(selectedBoy).eq('id', selectedBoy.id);
+    setEditingBoy(false); setBoyMenu(false); fetchData();
+  };
+  const deleteBoy = async (id: string) => {
+    if (!confirm('Delivery boy delete karna hai?')) return;
+    await supabase.from('delivery_boys').delete().eq('id', id);
+    setIsBoyModal(false); fetchData();
+  };
+  const toggleBoyActive = async (boy: DeliveryBoy) => {
+    await supabase.from('delivery_boys').update({ is_active: !boy.is_active }).eq('id', boy.id);
+    setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
+  };
+
+  // Tier Functions
+  const addTier = async () => {
+    const last = tiers[tiers.length - 1];
+    const min = last ? last.max_km : 0;
+    const max = min + 2;
+    const price = last ? last.price + 10 : 10;
+    await supabase.from('delivery_tiers').insert({ min_km: min, max_km: max, price });
+    fetchData();
+  };
+  const deleteTier = async (id: string) => {
+    if (tiers.length <= 1) return alert('Ek tier toh hona chahiye!');
+    await supabase.from('delivery_tiers').delete().eq('id', id);
+    fetchData();
   };
 
   // Tabs
@@ -262,18 +313,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           <div className="panel">
             <h3>Dashboard Overview</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-                <h2>{orders.length}</h2><p>Orders</p>
-              </div>
-              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-                <h2>{customers.length}</h2><p>Customers</p>
-              </div>
-              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-                <h2>{products.length}</h2><p>Products</p>
-              </div>
-              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
-                <h2>{deliveryBoys.length}</h2><p>Delivery Boys</p>
-              </div>
+              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{orders.length}</h2><p>Orders</p></div>
+              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{customers.length}</h2><p>Customers</p></div>
+              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{products.length}</h2><p>Products</p></div>
+              <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}><h2>{deliveryBoys.length}</h2><p>Delivery Boys</p></div>
             </div>
           </div>
         )}
@@ -315,12 +358,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               </select>
               <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
               <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
-              
-              {/* Unit Selection */}
               <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
                 {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
               </select>
-
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
                   <option value="none">No Discount</option>
@@ -329,48 +369,27 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 </select>
                 {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
               </div>
-
-              {/* GST Toggle & Rate */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} />
-                  Enable GST
-                </label>
-                {gstEnabled && (
-                  <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>
-                    {GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
-                  </select>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
+                {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
               </div>
-
-              {/* Main Image Upload */}
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Product Image (Thumbnail)</label>
+                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image</label>
                 <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
               </div>
-
-              {/* 3 Gallery Images Upload */}
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Additional Gallery Images (3)</label>
-                <input type="file" accept="image/*" multiple onChange={(e) => {
-                  const files = Array.from(e.target.files || []).slice(0, 3);
-                  setGalleryImages(files);
-                }} />
+                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3)</label>
+                <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
               </div>
             </div>
             <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addProduct}>Add Product</button>
-
             <h3 style={{ marginTop: '20px' }}>All Products</h3>
             <table>
               <thead><tr><th>Name</th><th>SKU</th><th>Unit</th><th>Price</th><th>GST</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {products.map(p => (
                   <tr key={p.id}>
-                    <td>{p.name}</td>
-                    <td>{p.sku}</td>
-                    <td>{p.unit || 'Pcs'}</td>
-                    <td>₹{p.price}</td>
-                    <td>{p.gst_enabled ? p.gst_rate + '%' : 'No'}</td>
+                    <td>{p.name}</td><td>{p.sku}</td><td>{p.unit || 'Pcs'}</td><td>₹{p.price}</td><td>{p.gst_enabled ? p.gst_rate + '%' : 'No'}</td>
                     <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td><div className="dots-btn" onClick={() => { setSelectedProduct(p); setIsProdModal(true); setProdMenu(false); setEditingProd(false); }}>⋮</div></td>
                   </tr>
@@ -390,13 +409,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <thead><tr><th>Name</th><th>Mobile Number</th><th>Joined</th></tr></thead>
               <tbody>
                 {customers.length === 0 ? <tr><td colSpan={3} style={{ textAlign: 'center' }}>Abhi koi customer nahi hai</td></tr> : (
-                  customers.map(c => (
-                    <tr key={c.id}>
-                      <td>{c.name || 'Unknown'}</td>
-                      <td>{c.mobile}</td>
-                      <td>{new Date(c.created_at).toLocaleDateString()}</td>
-                    </tr>
-                  ))
+                  customers.map(c => <tr key={c.id}><td>{c.name || 'Unknown'}</td><td>{c.mobile}</td><td>{new Date(c.created_at).toLocaleDateString()}</td></tr>)
                 )}
               </tbody>
             </table>
@@ -404,12 +417,201 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         )}
 
         {activeTab === 'orders' && <div className="panel"><h3>Orders</h3>{orders.length === 0 ? <p>Abhi koi order nahi!</p> : <p>Total Orders: {orders.length}</p>}</div>}
-        {activeTab === 'delivery' && <div className="panel"><h3>Delivery Boys</h3>{deliveryBoys.map(b => <div key={b.id}>{b.name} - {b.mobile}</div>)}</div>}
-        {activeTab === 'branches' && <div className="panel"><h3>Branches</h3>{branches.map(b => <div key={b.id}>{b.name}</div>)}</div>}
-        {activeTab === 'charges' && <div className="panel"><h3>Delivery Charges</h3>{tiers.map(t => <div key={t.id}>{t.min_km} - {t.max_km} KM: ₹{t.price}</div>)}</div>}
+
+        {activeTab === 'delivery' && (
+          <div className="panel">
+            <h3>Add Delivery Boy</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input placeholder="Name" value={dbName} onChange={(e) => setDbName(e.target.value)} />
+              <input placeholder="Mobile" value={dbMobile} onChange={(e) => setDbMobile(e.target.value)} />
+              <input placeholder="Aadhar" value={dbAadhar} onChange={(e) => setDbAadhar(e.target.value)} />
+              <input placeholder="Address" value={dbAddress} onChange={(e) => setDbAddress(e.target.value)} />
+            </div>
+            <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addDeliveryBoy}>Add Boy</button>
+            <h3 style={{ marginTop: '20px' }}>All Boys (Click Name)</h3>
+            {deliveryBoys.map(boy => <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setIsBoyModal(true); setBoyMenu(false); setEditingBoy(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{boy.name}</span> - {boy.mobile}</div>)}
+          </div>
+        )}
+
+        {activeTab === 'branches' && (
+          <div className="panel">
+            <h3>Add Branch (With Location & Max KM)</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} />
+              <input placeholder="Address" value={newBranchAddress} onChange={(e) => setNewBranchAddress(e.target.value)} />
+              <input placeholder="Latitude" value={newBranchLat} onChange={(e) => setNewBranchLat(e.target.value)} />
+              <input placeholder="Longitude" value={newBranchLng} onChange={(e) => setNewBranchLng(e.target.value)} />
+              <input placeholder="Range (KM)" value={newBranchRange} onChange={(e) => setNewBranchRange(e.target.value)} />
+              <input placeholder="Max Delivery (KM)" value={newBranchMaxKm} onChange={(e) => setNewBranchMaxKm(e.target.value)} />
+            </div>
+            <button className="btn btn-black" style={{ marginTop: '10px' }} onClick={addBranch}>Add Branch</button>
+            <h3 style={{ marginTop: '20px' }}>All Branches (Click Name)</h3>
+            {branches.map(branch => <div key={branch.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBranch(branch); setIsBranchModal(true); setBranchMenu(false); setEditingBranch(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{branch.name}</span> - {branch.delivery_range_km} KM</div>)}
+          </div>
+        )}
+
+        {activeTab === 'charges' && (
+          <div className="panel">
+            <h3>Delivery Charge Settings</h3>
+            <label>Base Fare (₹)</label>
+            <input type="number" value={settings?.base_fare ?? 0} onChange={(e) => setSettings({ ...settings!, base_fare: parseFloat(e.target.value) })} />
+            <label>Distance Tiers</label>
+            {tiers.map(tier => (
+              <div key={tier.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+                <input type="number" value={tier.min_km} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, min_km: v } : t)); }} />
+                <span>KM to</span>
+                <input type="number" value={tier.max_km} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, max_km: v } : t)); }} />
+                <span>KM = ₹</span>
+                <input type="number" value={tier.price} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, price: v } : t)); }} />
+                <button className="btn btn-red" onClick={() => deleteTier(tier.id)}>Del</button>
+              </div>
+            ))}
+            <button className="btn btn-blue" onClick={addTier}>+ Add Tier</button>
+            <button className="btn btn-black" style={{ marginTop: '20px' }} onClick={async () => { if (settings) { await supabase.from('delivery_settings').update(settings).eq('id', settings.id); alert('Saved!'); } }}>Save Settings</button>
+          </div>
+        )}
       </div>
 
-      {/* ... Modals for Category, Product, Branch, Delivery Boy (Rest same as previous code) ... */}
+      {/* Category Modal */}
+      <div className={`modal-scrim ${isCatModal ? 'show' : ''}`} onClick={() => setIsCatModal(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head"><h3>{selectedCategory?.name}</h3>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <div className="dots-btn" onClick={() => setCatMenu(!catMenu)}>⋮</div>
+              <div className={`dots-menu ${catMenu ? 'show' : ''}`}>
+                <button onClick={() => setEditingCat(true)}>✏️ Edit</button>
+                <button onClick={() => toggleCategoryActive(selectedCategory!)}>{selectedCategory?.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="danger" onClick={() => deleteCategory(selectedCategory!.id)}>Delete</button>
+              </div>
+            </div>
+            <div className="modal-close" onClick={() => setIsCatModal(false)}>✕</div>
+          </div>
+          <div className="modal-body">
+            {editingCat ? (
+              <div>
+                <div className="detail-row"><span className="dl">Name</span><input value={selectedCategory!.name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, name: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Short</span><input value={selectedCategory!.short_name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, short_name: e.target.value })} /></div>
+                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-red" onClick={() => setEditingCat(false)}>Cancel</button>
+                  <button className="btn btn-black" onClick={saveCategory}>Save</button>
+                </div>
+              </div>
+            ) : <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedCategory?.is_active ? 'Active' : 'Inactive'}</span></div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Product Modal */}
+      <div className={`modal-scrim ${isProdModal ? 'show' : ''}`} onClick={() => setIsProdModal(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head"><h3>{selectedProduct?.name}</h3>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <div className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</div>
+              <div className={`dots-menu ${prodMenu ? 'show' : ''}`}>
+                <button onClick={() => setEditingProd(true)}>✏️ Edit</button>
+                <button onClick={() => toggleProductActive(selectedProduct!)}>{selectedProduct?.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="danger" onClick={() => deleteProduct(selectedProduct!.id)}>Delete</button>
+              </div>
+            </div>
+            <div className="modal-close" onClick={() => setIsProdModal(false)}>✕</div>
+          </div>
+          <div className="modal-body">
+            {editingProd ? (
+              <div>
+                <div className="detail-row"><span className="dl">Name</span><input value={selectedProduct!.name} onChange={(e) => setSelectedProduct({ ...selectedProduct!, name: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Price</span><input type="number" value={selectedProduct!.price} onChange={(e) => setSelectedProduct({ ...selectedProduct!, price: parseFloat(e.target.value) })} /></div>
+                <div className="detail-row"><span className="dl">Stock</span><input type="number" value={selectedProduct!.stock} onChange={(e) => setSelectedProduct({ ...selectedProduct!, stock: parseFloat(e.target.value) })} /></div>
+                <div className="detail-row"><span className="dl">Unit</span><select value={selectedProduct!.unit || 'Pcs'} onChange={(e) => setSelectedProduct({ ...selectedProduct!, unit: e.target.value })}>{UNITS.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-red" onClick={() => setEditingProd(false)}>Cancel</button>
+                  <button className="btn btn-black" onClick={saveProduct}>Save</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="detail-row"><span className="dl">SKU</span><span className="dv">{selectedProduct?.sku}</span></div>
+                <div className="detail-row"><span className="dl">Price</span><span className="dv">₹{selectedProduct?.price}</span></div>
+                <div className="detail-row"><span className="dl">Unit</span><span className="dv">{selectedProduct?.unit || 'Pcs'}</span></div>
+                <div className="detail-row"><span className="dl">GST</span><span className="dv">{selectedProduct?.gst_enabled ? selectedProduct.gst_rate + '%' : 'No'}</span></div>
+                <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedProduct?.is_active ? 'Active' : 'Inactive'}</span></div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Branch Modal */}
+      <div className={`modal-scrim ${isBranchModal ? 'show' : ''}`} onClick={() => setIsBranchModal(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head"><h3>{selectedBranch?.name}</h3>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <div className="dots-btn" onClick={() => setBranchMenu(!branchMenu)}>⋮</div>
+              <div className={`dots-menu ${branchMenu ? 'show' : ''}`}>
+                <button onClick={() => setEditingBranch(true)}>✏️ Edit</button>
+                <button onClick={() => toggleBranchActive(selectedBranch!)}>{selectedBranch?.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="danger" onClick={() => deleteBranch(selectedBranch!.id)}>Delete</button>
+              </div>
+            </div>
+            <div className="modal-close" onClick={() => setIsBranchModal(false)}>✕</div>
+          </div>
+          <div className="modal-body">
+            {editingBranch ? (
+              <div>
+                <div className="detail-row"><span className="dl">Name</span><input value={selectedBranch!.name} onChange={(e) => setSelectedBranch({ ...selectedBranch!, name: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Lat</span><input type="number" value={selectedBranch!.lat} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lat: parseFloat(e.target.value) })} /></div>
+                <div className="detail-row"><span className="dl">Lng</span><input type="number" value={selectedBranch!.lng} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lng: parseFloat(e.target.value) })} /></div>
+                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-red" onClick={() => setEditingBranch(false)}>Cancel</button>
+                  <button className="btn btn-black" onClick={saveBranch}>Save</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBranch?.address || 'N/A'}</span></div>
+                <div className="detail-row"><span className="dl">Lat</span><span className="dv">{selectedBranch?.lat}</span></div>
+                <div className="detail-row"><span className="dl">Lng</span><span className="dv">{selectedBranch?.lng}</span></div>
+                <div className="detail-row"><span className="dl">Range</span><span className="dv">{selectedBranch?.delivery_range_km} KM</span></div>
+                <div className="detail-row"><span className="dl">Max</span><span className="dv">{selectedBranch?.max_delivery_km} KM</span></div>
+                <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBranch?.is_active ? 'Active' : 'Inactive'}</span></div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Delivery Boy Modal */}
+      <div className={`modal-scrim ${isBoyModal ? 'show' : ''}`} onClick={() => setIsBoyModal(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head"><h3>{selectedBoy?.name}</h3>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <div className="dots-btn" onClick={() => setBoyMenu(!boyMenu)}>⋮</div>
+              <div className={`dots-menu ${boyMenu ? 'show' : ''}`}>
+                <button onClick={() => setEditingBoy(true)}>✏️ Edit</button>
+                <button onClick={() => toggleBoyActive(selectedBoy!)}>{selectedBoy?.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="danger" onClick={() => deleteBoy(selectedBoy!.id)}>Delete</button>
+              </div>
+            </div>
+            <div className="modal-close" onClick={() => setIsBoyModal(false)}>✕</div>
+          </div>
+          <div className="modal-body">
+            {editingBoy ? (
+              <div>
+                <div className="detail-row"><span className="dl">Name</span><input value={selectedBoy!.name} onChange={(e) => setSelectedBoy({ ...selectedBoy!, name: e.target.value })} /></div>
+                <div className="detail-row"><span className="dl">Mobile</span><input value={selectedBoy!.mobile} onChange={(e) => setSelectedBoy({ ...selectedBoy!, mobile: e.target.value })} /></div>
+                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button className="btn btn-red" onClick={() => setEditingBoy(false)}>Cancel</button>
+                  <button className="btn btn-black" onClick={saveBoy}>Save</button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedBoy?.mobile}</span></div>
+                <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBoy?.is_active ? 'Active' : 'Inactive'}</span></div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
