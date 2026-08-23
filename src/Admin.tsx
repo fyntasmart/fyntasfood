@@ -7,7 +7,6 @@ interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
 interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
-interface OrderItem { id: string; order_id: string; product_id: string; quantity: number; price: number; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
@@ -24,7 +23,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [orderItems, setOrderItems] = useState<OrderItem[]>([]); // Added for order details
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -87,14 +85,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
 
   const fetchData = async () => {
-    const [b, s, t, c, p, o, oi, d, cust, bn, pages] = await Promise.all([
+    const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
       supabase.from('branches').select('*'),
       supabase.from('delivery_settings').select('*').single(),
       supabase.from('delivery_tiers').select('*').order('min_km'),
       supabase.from('categories').select('*').order('created_at', { ascending: false }),
       supabase.from('products').select('*').order('created_at', { ascending: false }),
       supabase.from('orders').select('*').order('created_at', { ascending: false }),
-      supabase.from('order_items').select('*'),
       supabase.from('delivery_boys').select('*'),
       supabase.from('customers').select('*').order('created_at', { ascending: false }),
       supabase.from('banners').select('*').order('created_at', { ascending: false }),
@@ -106,7 +103,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (c.data) setCategories(c.data);
     if (p.data) setProducts(p.data);
     if (o.data) setOrders(o.data);
-    if (oi.data) setOrderItems(oi.data);
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
