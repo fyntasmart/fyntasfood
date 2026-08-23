@@ -1,5 +1,3 @@
-import { supabase } from '../supabaseClient';
-
 const CustomerCart = ({ cart, setCart, onCheckout }: any) => {
   const changeQty = (id: string, type: 'inc' | 'dec') => {
     setCart((prev: any[]) => prev.map(item => {
