@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import CustomerHome from './pages/CustomerHome';
+import CustomerCategories from './pages/CustomerCategories';
+import CustomerProfile from './pages/CustomerProfile';
+import CustomerFavorites from './pages/CustomerFavorites';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -34,7 +38,7 @@ const CustomerLayout = () => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>
       )}
 
-      {/* Drawer (White theme, Blue Header) */}
+      {/* Drawer */}
       <div style={{ 
         position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', 
         background: '#ffffff', zIndex: 300, 
@@ -67,7 +71,7 @@ const CustomerLayout = () => {
         </div>
       </div>
 
-      {/* Header with Hamburger (3 Lines) */}
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#ffffff', borderBottom: '1px solid #e5e7eb' }}>
         <div onClick={() => setIsDrawerOpen(true)} style={{ fontSize: '24px', cursor: 'pointer', color: '#111827', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ width: '24px', height: '2px', background: '#111827' }}></div>
@@ -78,13 +82,21 @@ const CustomerLayout = () => {
         <div style={{ fontSize: '20px', color: '#1e40af' }}>🔔</div>
       </div>
 
-      {/* Content Area */}
-      <div style={{ padding: '15px' }}>
-        {activeTab === 'home' && <p style={{ color: '#333' }}>Home Screen</p>}
-        {activeTab === 'favorite' && <p style={{ color: '#333' }}>Wishlist</p>}
-        {activeTab === 'cart' && <p style={{ color: '#333' }}>Cart (Empty)</p>}
-        {activeTab === 'categories' && <p style={{ color: '#333' }}>Categories</p>}
-        {activeTab === 'profile' && <p style={{ color: '#333' }}>My Profile</p>}
+      {/* ✅ CONTENT AREA - YAHAN PAGES LOAD HONGE */}
+      <div style={{ padding: '0px' }}>
+        {activeTab === 'home' && <CustomerHome />}
+        {activeTab === 'categories' && <CustomerCategories />}
+        {activeTab === 'favorite' && <CustomerFavorites />}
+        {activeTab === 'profile' && <CustomerProfile />}
+        {/* Cart aur baaki places ko abhi placeholder rakha hai */}
+        {activeTab === 'cart' && <div style={{ padding: '20px' }}><p>Cart (Empty)</p></div>}
+        {activeTab === 'orders' && <div style={{ padding: '20px' }}><p>My Orders</p></div>}
+        {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
+        {activeTab === 'addresses' && <div style={{ padding: '20px' }}><p>Manage Addresses</p></div>}
+        {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
+        {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
+        {activeTab === 'terms' && <div style={{ padding: '20px' }}><p>Terms & Conditions</p></div>}
+        {activeTab === 'refund' && <div style={{ padding: '20px' }}><p>Refund Policy</p></div>}
       </div>
 
       {/* Bottom Navigation */}
