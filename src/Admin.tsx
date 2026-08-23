@@ -9,7 +9,6 @@ interface Product { id: string; name: string; sku: string; price: number; stock:
 interface Order { id: string; customer_name: string; total_amount: number; status: string; created_at: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
-// Banner Interface add kiya
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
@@ -25,14 +24,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  // Banner State add kiya
   const [banners, setBanners] = useState<Banner[]>([]);
 
-  // Banner Form States
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
 
-  // Product Form States
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -46,12 +42,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
 
-  // Category Form
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
 
-  // Branch Form
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchAddress, setNewBranchAddress] = useState('');
   const [newBranchLat, setNewBranchLat] = useState('');
@@ -59,13 +53,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [newBranchRange, setNewBranchRange] = useState('10');
   const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
 
-  // Delivery Boy Form
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
-  // Modal States
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -86,7 +78,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [boyMenu, setBoyMenu] = useState(false);
   const [editingBoy, setEditingBoy] = useState(false);
 
-  // Fetch Data (Banner fetch add kiya)
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn] = await Promise.all([
       supabase.from('branches').select('*'),
@@ -112,7 +103,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Upload Image Helper
   const uploadImage = async (file: File) => {
     const path = `${Date.now()}_${file.name}`;
     const { error } = await supabase.storage.from('product-images').upload(path, file);
@@ -121,7 +111,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // Banner Functions (Add, Toggle, Delete)
   const addBanner = async () => {
     if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
     let imgUrl = '';
@@ -139,7 +128,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // Add Category
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -148,7 +136,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
-  // Add Product
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     
@@ -178,7 +165,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // Export Customers
   const exportCustomers = () => {
     const header = ["Name", "Mobile Number"];
     const rows = customers.map(c => [c.name || 'Unknown', c.mobile]);
@@ -191,7 +177,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     link.click();
   };
 
-  // Category CRUD
   const saveCategory = async () => {
     if (!selectedCategory) return;
     await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id);
@@ -207,7 +192,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsCatModal(false); fetchData();
   };
 
-  // Product CRUD
   const saveProduct = async () => {
     if (!selectedProduct) return;
     await supabase.from('products').update(selectedProduct).eq('id', selectedProduct.id);
@@ -223,7 +207,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsProdModal(false); fetchData();
   };
 
-  // Branch CRUD
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
@@ -244,7 +227,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
-  // Delivery Boy CRUD
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
@@ -265,7 +247,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
-  // Tier Functions
   const addTier = async () => {
     const last = tiers[tiers.length - 1];
     const min = last ? last.max_km : 0;
@@ -280,7 +261,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // Tabs (Banner tab add kiya)
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'orders', label: 'Orders', icon: '📦' },
@@ -290,7 +270,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
     { id: 'branches', label: 'Branches', icon: '🏬' },
     { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' }, // Banner Tab
+    { id: 'banners', label: 'Banners', icon: '🖼️' },
   ];
 
   return (
@@ -350,7 +330,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* BANNERS TAB UI */}
         {activeTab === 'banners' && (
           <div className="panel">
             <h3>Add New Banner</h3>
