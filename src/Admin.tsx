@@ -5,8 +5,9 @@ interface Branch { id: string; name: string; address?: string; lat: number; lng:
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
-interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
-interface Order { id: string; customer_name: string; total_amount: number; status: string; created_at: string; }
+interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
+interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
+interface OrderItem { id: string; order_id: string; product_id: string; quantity: number; price: number; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
@@ -23,6 +24,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]); // Added for order details
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -34,29 +36,24 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
 
-  // Product Form States
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
   const [prodPrice, setProdPrice] = useState('');
   const [prodStock, setProdStock] = useState('');
   const [prodUnit, setProdUnit] = useState('Pcs');
+  const [prodDesc, setProdDesc] = useState('');
   const [discountType, setDiscountType] = useState('none');
   const [discountValue, setDiscountValue] = useState('');
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
-  
-  // 🆕 Product Description State
-  const [prodDesc, setProdDesc] = useState('');
 
-  // Category Form
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
 
-  // Branch Form
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchAddress, setNewBranchAddress] = useState('');
   const [newBranchLat, setNewBranchLat] = useState('');
@@ -64,13 +61,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [newBranchRange, setNewBranchRange] = useState('10');
   const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
 
-  // Delivery Boy Form
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
-  // Modal States
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -111,7 +106,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (c.data) setCategories(c.data);
     if (p.data) setProducts(p.data);
     if (o.data) setOrders(o.data);
-    if (oi.data) { /* setOrderItems(oi.data); assuming state exists or used for count/logic */ }
+    if (oi.data) setOrderItems(oi.data);
     if (d.data) setDeliveryBoys(d.data);
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
@@ -147,7 +142,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     }
   };
 
-  // Order Management Functions
   const updateOrderStatus = async (id: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', id);
     fetchData();
@@ -184,7 +178,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
 
-  // ✅ Add Product with Description
   const addProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     let mainImageUrl = '';
@@ -197,19 +190,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     const { error } = await supabase.from('products').insert({
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
-      unit: prodUnit,
-      description: prodDesc, // ✅ Description insert
+      unit: prodUnit, description: prodDesc,
       image_url: mainImageUrl,
-      image_2: galleryUrls[0] || '',
-      image_3: galleryUrls[1] || '',
-      image_4: galleryUrls[2] || '',
+      image_2: galleryUrls[0] || '', image_3: galleryUrls[1] || '', image_4: galleryUrls[2] || '',
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
       gst_enabled: gstEnabled, gst_rate: gstRate
     });
     if (error) { alert('Product add nahi hua: ' + error.message); return; }
     setProdName(''); setProdSku(''); setProdPrice(''); setProdStock('');
-    setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0);
-    setProdDesc(''); // ✅ Description reset
+    setMainImage(null); setGalleryImages([]); setGstEnabled(false); setGstRate(0); setProdDesc('');
     fetchData();
   };
 
@@ -494,7 +483,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
                 {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
               </select>
-              {/* 🆕 Description Input */}
               <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
@@ -754,7 +742,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       </div>
 
-      {/* Delivery Boy Modal - UPDATED FULL DETAILS */}
+      {/* Delivery Boy Modal - Full Details */}
       <div className={`modal-scrim ${isBoyModal ? 'show' : ''}`} onClick={() => setIsBoyModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head"><h3>{selectedBoy?.name}</h3>
