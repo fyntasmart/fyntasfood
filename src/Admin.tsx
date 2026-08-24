@@ -31,9 +31,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  // Products Filtering State
   const [productSearch, setProductSearch] = useState('');
-
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -314,7 +312,66 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {activeTab === 'orders' && ( /* Existing Orders Tab */ )}
+        {/* ORDERS TAB - FULL CODE YAHAN HAI (Comment hata diya) */}
+        {activeTab === 'orders' && (
+          <div className="panel">
+            <div className="table-controls">
+              <h3 style={{ margin: 0 }}>All Orders</h3>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input type="text" placeholder="Search orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ maxWidth: '200px' }} />
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: '150px' }}>
+                  <option value="all">All Status</option>
+                  {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <table className="order-table">
+              <thead><tr><th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody>
+                {currentOrders.length === 0 ? <tr><td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>No orders found</td></tr> : (
+                  currentOrders.map(order => (
+                    <tr key={order.id}>
+                      <td>#{order.id.slice(0, 4)}</td>
+                      <td style={{ fontWeight: '600' }}>ORD{order.id.slice(0, 6).toUpperCase()}</td>
+                      <td>{order.customer_name}<br /><span style={{ fontSize: '11px', color: '#6b7280' }}>{order.customer_mobile}</span></td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.address}</td>
+                      <td style={{ fontWeight: '700' }}>₹{order.total_amount}</td>
+                      <td>{order.payment_method === 'upi' ? 'UPI' : 'COD'}</td>
+                      <td><select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value)} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', border: '1px solid #d1d5db', borderRadius: '4px' }}>{statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></td>
+                      <td>{new Date(order.created_at).toLocaleString()}</td>
+                      <td>
+                        <div className="menu-wrapper" ref={menuRef}>
+                          <button className="dots-btn" onClick={() => setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id)}>⋮</button>
+                          <div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`}>
+                            <button onClick={() => { setSelectedOrderForView(order); setOpenOrderMenuId(null); }}>👁️ View Details</button>
+                            <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
+                              <div style={{ padding: '0 14px', fontSize: '11px', color: '#6b7280' }}>Print Receipt</div>
+                              <button onClick={() => printReceipt(order.id, 'a4')}>🖨️ Normal (A4)</button>
+                              <button onClick={() => printReceipt(order.id, 'thermal-80')}>🖨️ Thermal 80mm</button>
+                              <button onClick={() => printReceipt(order.id, 'thermal-58')}>🖨️ Thermal 58mm</button>
+                            </div>
+                            <div style={{ borderTop: '1px solid #f3f4f6' }}>
+                              <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '8px 14px', width: '100%', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>
+                                <option value="">🛵 Assign Boy</option>
+                                {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
+                              </select>
+                            </div>
+                            <button className="danger" onClick={() => deleteOrder(order.id)}>🗑️ Delete</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
+              <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage > 1 && paginate(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
+              <span style={{ fontSize: '13px' }}>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
+              <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage < Math.ceil(filteredOrders.length / ordersPerPage) && paginate(currentPage + 1)} disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}>Next</button>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'products' && (
           <div>
