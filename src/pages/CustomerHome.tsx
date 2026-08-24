@@ -5,6 +5,8 @@ const CustomerHome = ({ addToCart, onProductClick }: any) => {
   const [banners, setBanners] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [hotDeals, setHotDeals] = useState<any[]>([]);
+  const [topRated, setTopRated] = useState<any[]>([]);
   
   const [currentBanner, setCurrentBanner] = useState(0);
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -14,26 +16,27 @@ const CustomerHome = ({ addToCart, onProductClick }: any) => {
       const { data: b } = await supabase.from('banners').select('*').eq('is_active', true);
       const { data: c } = await supabase.from('categories').select('*').eq('is_active', true);
       const { data: p } = await supabase.from('products').select('*').eq('is_active', true).limit(10);
+      const { data: deals } = await supabase.from('products').select('*').eq('is_active', true).not('discount_type', 'eq', 'none').limit(6);
+      const { data: rated } = await supabase.from('products').select('*').eq('is_active', true).order('price', { ascending: false }).limit(6);
       
       if (b) setBanners(b);
       if (c) setCategories(c);
       if (p) setProducts(p);
+      if (deals) setHotDeals(deals);
+      if (rated) setTopRated(rated);
     };
     fetchData();
   }, []);
 
-  // Auto Banner Slide Logic
+  // Auto Banner Slide Logic (same as before)
   useEffect(() => {
     if (banners.length <= 1) return;
-    
     const interval = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 3000);
-
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Scroll to slide
   useEffect(() => {
     if (bannerRef.current && banners.length > 0) {
       const slideWidth = bannerRef.current.clientWidth;
@@ -64,25 +67,55 @@ const CustomerHome = ({ addToCart, onProductClick }: any) => {
         </div>
       </div>
 
-      {/* Featured Items (Click par Full Page khulega) */}
+      {/* Hot Deals */}
+      {hotDeals.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ margin: '0 0 10px', color: '#dc2626' }}>🔥 Hot Deals</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {hotDeals.map(p => (
+              <div key={p.id} onClick={() => onProductClick(p)} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', cursor: 'pointer' }}>
+                <img src={p.image_url || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
+                <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                  <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
+                  <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🛒 Add</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top Rated */}
+      {topRated.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ margin: '0 0 10px', color: '#059669' }}>⭐ Top Rated</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {topRated.map(p => (
+              <div key={p.id} onClick={() => onProductClick(p)} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', cursor: 'pointer' }}>
+                <img src={p.image_url || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
+                <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                  <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
+                  <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🛒 Add</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Items (existing) */}
       <div>
         <h3 style={{ margin: '0 0 10px', color: '#000000' }}>Featured Items</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {products.map(p => (
-            <div 
-              key={p.id} 
-              onClick={() => onProductClick(p)} 
-              style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', cursor: 'pointer' }}
-            >
+            <div key={p.id} onClick={() => onProductClick(p)} style={{ background: '#ffffff', borderRadius: '10px', padding: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb', cursor: 'pointer' }}>
               <img src={p.image_url || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', marginBottom: '8px' }} />
               <p style={{ margin: '0', fontSize: '14px', fontWeight: 'bold', color: '#000000' }}>{p.name}</p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
                 <p style={{ margin: 0, color: '#1d4ed8', fontWeight: 'bold' }}>₹{p.price}</p>
-                {/* Add to Cart Button (Click par Cart mein jayega, Page nahi khulega) */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); addToCart(p); }} 
-                  style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                >🛒 Add</button>
+                <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} style={{ background: '#1e40af', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🛒 Add</button>
               </div>
             </div>
           ))}
