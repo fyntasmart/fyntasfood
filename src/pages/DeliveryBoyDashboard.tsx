@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
 const DeliveryBoyDashboard = () => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
@@ -10,7 +10,8 @@ const DeliveryBoyDashboard = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [boyId, setBoyId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, orders, earnings, profile
+  
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   // Green Theme CSS (Reference se exact)
@@ -65,13 +66,16 @@ const DeliveryBoyDashboard = () => {
     .login-btn{width:100%; padding:15px; background:var(--green-600); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;}
   `;
 
-  // Login Logic
+  // Login Logic (Popup Alert removed)
   const sendOtp = async () => {
     if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
     setLoading(true); setError('');
     const { data, error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
+    
+    // ✅ POPUP HATA DIYA - Seedha OTP Step par le jaao
     if (error) setError('OTP error: ' + (data?.error || error.message));
-    else { setStep(2); alert('OTP bhej diya gaya hai!'); }
+    else setStep(2); 
+    
     setLoading(false);
   };
 
@@ -96,7 +100,7 @@ const DeliveryBoyDashboard = () => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     if (boyId) fetchOrders(boyId);
     setSelectedOrder(null);
-    alert('Status Updated!');
+    // Updated to no alert to keep it clean, just refresh
   };
 
   if (!isLoggedIn) {
