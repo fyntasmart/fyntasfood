@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
+// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -82,7 +83,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [isBoyModal, setIsBoyModal] = useState(false);
   const [boyMenu, setBoyMenu] = useState(false);
   const [editingBoy, setEditingBoy] = useState(false);
-  const [originalBoyMobile, setOriginalBoyMobile] = useState('');
+  const [originalBoyMobile, setOriginalBoyMobile] = useState(''); // Fixed
 
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
@@ -399,6 +400,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
+        {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -411,6 +413,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Orders */}
         {activeTab === 'orders' && (
           <div className="panel">
             <h3>Customer Orders ({orders.length})</h3>
@@ -455,6 +458,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Products */}
         {activeTab === 'products' && (
           <div className="panel">
             {editingProductFull ? (
@@ -557,11 +561,182 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* ... (Banners, Categories, Customers, Delivery, Branches, Charges, Profile, Policies, Content ke sections same rahenge, bas colors update ho gaye hain) ... */}
-        {/* Note: Baaki sections ka code same hai, unhe yahan repeat nahi kar raha hoon, maine already pichle response mein detail di thi. Aapko bas purana code replace karna hai. */}
+        {/* Categories */}
+        {activeTab === 'categories' && (
+          <div className="panel">
+            <h3>All Categories</h3>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input placeholder="Category Name" value={catName} onChange={(e) => setCatName(e.target.value)} />
+              <input placeholder="Short Code" value={catShort} onChange={(e) => setCatShort(e.target.value)} />
+              <input type="file" accept="image/*" onChange={(e) => setCatImg(e.target.files?.[0] || null)} />
+              <button className="btn btn-black" onClick={addCategory}>Add</button>
+            </div>
+            <table>
+              <thead><tr><th>Image</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {categories.map(cat => (
+                  <tr key={cat.id}>
+                    <td>{cat.image_url ? <img src={cat.image_url} alt="cat" style={{ width: 40, height: 40, borderRadius: 8 }} /> : 'No Img'}</td>
+                    <td>{cat.name}</td>
+                    <td><span className={`status-pill ${cat.is_active ? 'active' : 'inactive'}`}>{cat.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td><div className="dots-btn" onClick={() => { setSelectedCategory(cat); setIsCatModal(true); setCatMenu(false); setEditingCat(false); }}>⋮</div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Customers */}
+        {activeTab === 'customers' && (
+          <div className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>All Customers ({customers.length})</h3>
+              <button className="btn btn-black" onClick={exportCustomers}>Export Excel (CSV)</button>
+            </div>
+            <table>
+              <thead><tr><th>Name</th><th>Mobile Number</th><th>Joined</th></tr></thead>
+              <tbody>
+                {customers.length === 0 ? <tr><td colSpan={3} style={{ textAlign: 'center' }}>Abhi koi customer nahi hai</td></tr> : (
+                  customers.map(c => <tr key={c.id}><td>{c.name || 'Unknown'}</td><td>{c.mobile}</td><td>{new Date(c.created_at).toLocaleDateString()}</td></tr>)
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Delivery Boys */}
+        {activeTab === 'delivery' && (
+          <div className="panel">
+            <h3>Add Delivery Boy</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input placeholder="Name" value={dbName} onChange={(e) => setDbName(e.target.value)} />
+              <input placeholder="Mobile" value={dbMobile} onChange={(e) => setDbMobile(e.target.value)} />
+              <input placeholder="Aadhar" value={dbAadhar} onChange={(e) => setDbAadhar(e.target.value)} />
+              <input placeholder="Address" value={dbAddress} onChange={(e) => setDbAddress(e.target.value)} />
+            </div>
+            <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addDeliveryBoy}>Add Boy</button>
+            <h3 style={{ marginTop: '20px' }}>All Boys (Click Name)</h3>
+            {deliveryBoys.map(boy => <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setOriginalBoyMobile(boy.mobile); setIsBoyModal(true); setBoyMenu(false); setEditingBoy(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{boy.name}</span> - {boy.mobile}</div>)}
+          </div>
+        )}
+
+        {/* Branches */}
+        {activeTab === 'branches' && (
+          <div className="panel">
+            <h3>Add Branch (With Location & Max KM)</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} />
+              <input placeholder="Address" value={newBranchAddress} onChange={(e) => setNewBranchAddress(e.target.value)} />
+              <input placeholder="Latitude" value={newBranchLat} onChange={(e) => setNewBranchLat(e.target.value)} />
+              <input placeholder="Longitude" value={newBranchLng} onChange={(e) => setNewBranchLng(e.target.value)} />
+              <input placeholder="Range (KM)" value={newBranchRange} onChange={(e) => setNewBranchRange(e.target.value)} />
+              <input placeholder="Max Delivery (KM)" value={newBranchMaxKm} onChange={(e) => setNewBranchMaxKm(e.target.value)} />
+            </div>
+            <button className="btn btn-black" style={{ marginTop: '10px' }} onClick={addBranch}>Add Branch</button>
+            <h3 style={{ marginTop: '20px' }}>All Branches (Click Name)</h3>
+            {branches.map(branch => <div key={branch.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBranch(branch); setIsBranchModal(true); setBranchMenu(false); setEditingBranch(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{branch.name}</span> - {branch.delivery_range_km} KM</div>)}
+          </div>
+        )}
+
+        {/* Charges */}
+        {activeTab === 'charges' && (
+          <div className="panel">
+            <h3>Delivery Charge Settings</h3>
+            <label>Base Fare (₹)</label>
+            <input type="number" value={settings?.base_fare ?? 0} onChange={(e) => setSettings({ ...settings!, base_fare: parseFloat(e.target.value) })} />
+            <label>Distance Tiers</label>
+            {tiers.map(tier => (
+              <div key={tier.id} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+                <input type="number" value={tier.min_km} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, min_km: v } : t)); }} />
+                <span>KM to</span>
+                <input type="number" value={tier.max_km} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, max_km: v } : t)); }} />
+                <span>KM = ₹</span>
+                <input type="number" value={tier.price} style={{ width: '70px' }} onChange={(e) => { const v = parseFloat(e.target.value); setTiers(tiers.map(t => t.id === tier.id ? { ...t, price: v } : t)); }} />
+                <button className="btn btn-red" onClick={() => deleteTier(tier.id)}>Del</button>
+              </div>
+            ))}
+            <button className="btn btn-blue" onClick={addTier}>+ Add Tier</button>
+            <button className="btn btn-black" style={{ marginTop: '20px' }} onClick={async () => { if (settings) { await supabase.from('delivery_settings').update(settings).eq('id', settings.id); alert('Saved!'); } }}>Save Settings</button>
+          </div>
+        )}
+
+        {/* Banners */}
+        {activeTab === 'banners' && (
+          <div className="panel">
+            <h3>Add New Banner</h3>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input placeholder="Banner Title (e.g. Grocery at Home)" value={bannerTitle} onChange={(e) => setBannerTitle(e.target.value)} />
+              <input type="file" accept="image/*" onChange={(e) => setBannerImg(e.target.files?.[0] || null)} />
+              <button className="btn btn-black" onClick={addBanner}>Add Banner</button>
+            </div>
+            <h3>All Banners</h3>
+            <table>
+              <thead><tr><th>Image</th><th>Title</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {banners.map(banner => (
+                  <tr key={banner.id}>
+                    <td><img src={banner.image_url} alt="banner" style={{ width: '80px', height: '40px', objectFit: 'cover', borderRadius: '5px' }} /></td>
+                    <td>{banner.title}</td>
+                    <td><span className={`status-pill ${banner.is_active ? 'active' : 'inactive'}`}>{banner.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                      <button className="btn btn-green" onClick={() => toggleBannerActive(banner)}>Toggle</button>
+                      <button className="btn btn-red" style={{ marginLeft: '5px' }} onClick={() => deleteBanner(banner.id)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Profile */}
+        {activeTab === 'profile' && (
+          <div className="panel">
+            <h3>My Profile (Admin)</h3>
+            <p style={{ color: '#666' }}>Mobile: 9984389923</p>
+            <p style={{ color: '#666' }}>Role: Admin</p>
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+              <button className="btn btn-red" onClick={onLogout}>Logout</button>
+              <button className="btn btn-black">Change Password</button>
+            </div>
+          </div>
+        )}
+
+        {/* Policies */}
+        {activeTab === 'policies' && (
+          <div className="panel">
+            <h3>Policies</h3>
+            <p style={{ color: '#666' }}>Yahan aap Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit karke "App Content" tab mein save kar sakte hain.</p>
+            <div style={{ marginTop: '20px' }}>
+              <button className="btn btn-black" onClick={() => setActiveTab('content')}>Go to App Content</button>
+            </div>
+          </div>
+        )}
+
+        {/* Content */}
+        {activeTab === 'content' && (
+          <div className="panel">
+            <h3>Manage App Content</h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+              <select value={selectedPage} onChange={(e) => handleSelectPage(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
+                <option value="about">About Us</option>
+                <option value="privacy">Privacy Policy</option>
+                <option value="terms">Terms & Conditions</option>
+                <option value="refund">Refund Policy</option>
+              </select>
+            </div>
+            <textarea value={currentContent} onChange={(e) => setCurrentContent(e.target.value)} rows={10} style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', color: '#111111' }} placeholder={`Enter ${selectedPage} content here...`} />
+            <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={saveContent}>Save Content</button>
+          </div>
+        )}
       </div>
 
-      {/* Modals (Same as before, but with updated CSS classes) */}
+      {/* Modals */}
+      {/* Category Modal */}
       <div className={`modal-scrim ${isCatModal ? 'show' : ''}`} onClick={() => setIsCatModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head"><h3>{selectedCategory?.name}</h3>
@@ -586,6 +761,32 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 </div>
               </div>
             ) : <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedCategory?.is_active ? 'Active' : 'Inactive'}</span></div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Product Modal */}
+      <div className={`modal-scrim ${isProdModal ? 'show' : ''}`} onClick={() => setIsProdModal(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head"><h3>{selectedProduct?.name}</h3>
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <div className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</div>
+              <div className={`dots-menu ${prodMenu ? 'show' : ''}`}>
+                <button onClick={() => { handleStartEditProduct(selectedProduct!); }}>✏️ Edit (Full Page)</button>
+                <button onClick={() => toggleProductActive(selectedProduct!)}>{selectedProduct?.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button className="danger" onClick={() => deleteProduct(selectedProduct!.id)}>Delete</button>
+              </div>
+            </div>
+            <div className="modal-close" onClick={() => setIsProdModal(false)}>✕</div>
+          </div>
+          <div className="modal-body">
+            <div>
+              <div className="detail-row"><span className="dl">SKU</span><span className="dv">{selectedProduct?.sku}</span></div>
+              <div className="detail-row"><span className="dl">Price</span><span className="dv">₹{selectedProduct?.price}</span></div>
+              <div className="detail-row"><span className="dl">Unit</span><span className="dv">{selectedProduct?.unit || 'Pcs'}</span></div>
+              <div className="detail-row"><span className="dl">GST</span><span className="dv">{selectedProduct?.gst_enabled ? selectedProduct.gst_rate + '%' : 'No'}</span></div>
+              <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedProduct?.is_active ? 'Active' : 'Inactive'}</span></div>
+            </div>
           </div>
         </div>
       </div>
