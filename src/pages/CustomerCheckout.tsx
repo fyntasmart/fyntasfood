@@ -11,7 +11,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [tiers, setTiers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi'); // UPI by default
+  const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi');
   
   // UPI Modal State
   const [showUpiModal, setShowUpiModal] = useState(false);
@@ -21,19 +21,12 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
 
-  const [userLat, setUserLat] = useState<number | null>(null);
-  const [userLng, setUserLng] = useState<number | null>(null);
-  const [useCurrentLocation, setUseCurrentLocation] = useState(true);
-
   useEffect(() => {
     const fetchData = async () => {
       const { data: b } = await supabase.from('branches').select('*').eq('is_active', true);
       const { data: t } = await supabase.from('delivery_tiers').select('*').order('max_km');
       if (b) setBranches(b);
       if (t) setTiers(t);
-      setUserLat(27.2150);
-      setUserLng(77.3350);
-      setAddress("PGHV+65Q, Malmalija, Uttar Pradesh 273002");
     };
     fetchData();
   }, []);
@@ -95,7 +88,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   };
 
   const handlePayButton = () => {
-    // Temporary ID for the Payment Note
     const tempId = Math.floor(100000 + Math.random() * 900000).toString();
     setTempOrderId(tempId);
     setShowUpiModal(true);
@@ -106,7 +98,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   };
 
   const handleConfirmUpiPayment = () => {
-    // User ne QR scan karke pay kar diya, ab order confirm karo
     setShowUpiModal(false);
     handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
   };
