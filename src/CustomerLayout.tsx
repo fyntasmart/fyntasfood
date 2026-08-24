@@ -1,4 +1,4 @@
-import { useState } from 'react'; // ✅ useEffect hataya
+import { useState } from 'react';
 import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
@@ -8,7 +8,9 @@ import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerAddresses from './pages/CustomerAddresses';
-import OtpFlow from './components/OtpFlow'; // ✅ Import OtpFlow
+// ✅ Import Supabase
+import { supabase } from './supabaseClient';
+import OtpFlow from './components/OtpFlow';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -25,74 +27,33 @@ const CustomerLayout = () => {
 
   const [showLogin, setShowLogin] = useState(false);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2000);
-  };
-
-  const addToCart = (product: any) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      return [...prev, { ...product, qty: 1 }];
-    });
-    showToast('Item Added to Cart ✔️');
-  };
-
-  const handleProductClick = (product: any) => {
-    setSelectedProduct(product);
-    setIsProductPage(true);
-  };
-
-  const handleBack = () => {
-    setIsProductPage(false);
-    setSelectedProduct(null);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('fyntas_mobile');
-    localStorage.removeItem('fyntas_name');
-    setIsLoggedIn(false);
-    setUserMobile('');
-    setUserName('');
-    setShowLogin(false);
-  };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2000); };
+  const addToCart = (product: any) => { setCart(prev => { const existing = prev.find(item => item.id === product.id); if (existing) return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item); return [...prev, { ...product, qty: 1 }]; }); showToast('Item Added to Cart ✔️'); };
+  const handleProductClick = (product: any) => { setSelectedProduct(product); setIsProductPage(true); };
+  const handleBack = () => { setIsProductPage(false); setSelectedProduct(null); };
+  const handleLogout = () => { localStorage.removeItem('fyntas_mobile'); localStorage.removeItem('fyntas_name'); setIsLoggedIn(false); setUserMobile(''); setUserName(''); };
 
   const tabs = [
-    { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'favorite', label: 'Favorite', icon: '❤️' },
-    { id: 'cart', label: 'Cart', icon: '🛒' },
-    { id: 'categories', label: 'Categories', icon: '📂' },
+    { id: 'home', label: 'Home', icon: '🏠' }, { id: 'favorite', label: 'Favorite', icon: '❤️' },
+    { id: 'cart', label: 'Cart', icon: '🛒' }, { id: 'categories', label: 'Categories', icon: '📂' },
     { id: 'profile', label: 'Profile', icon: '👤' },
   ];
 
   const drawerItems = [
-    { id: 'home', label: 'Home', icon: '🏠' },
-    { id: 'profile', label: 'My Profile', icon: '👤' },
-    { id: 'orders', label: 'My Orders', icon: '📦' },
-    { id: 'cart', label: 'My Cart', icon: '🛒' },
-    { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
-    { id: 'addresses', label: 'Manage Addresses', icon: '📍' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' },
-    { id: 'about', label: 'About', icon: 'ℹ️' },
-    { id: 'privacy', label: 'Privacy Policy', icon: '🛡️' },
-    { id: 'terms', label: 'Terms & Conditions', icon: '📜' },
+    { id: 'home', label: 'Home', icon: '🏠' }, { id: 'profile', label: 'My Profile', icon: '👤' },
+    { id: 'orders', label: 'My Orders', icon: '📦' }, { id: 'cart', label: 'My Cart', icon: '🛒' },
+    { id: 'wishlist', label: 'Wishlist', icon: '❤️' }, { id: 'addresses', label: 'Manage Addresses', icon: '📍' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔' }, { id: 'about', label: 'About', icon: 'ℹ️' },
+    { id: 'privacy', label: 'Privacy Policy', icon: '🛡️' }, { id: 'terms', label: 'Terms & Conditions', icon: '📜' },
     { id: 'refund', label: 'Refund Policy', icon: '💰' },
   ];
 
-  if (isProductPage && selectedProduct) {
-    return <ProductPage product={selectedProduct} addToCart={addToCart} onBack={handleBack} />;
-  }
+  if (isProductPage && selectedProduct) return <ProductPage product={selectedProduct} addToCart={addToCart} onBack={handleBack} />;
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', maxWidth: '480px', margin: '0 auto', paddingBottom: '80px', background: '#f8f9fa', color: '#111111', minHeight: '100vh', position: 'relative' }}>
       
-      {toast && (
-        <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#111111', color: '#fff', padding: '10px 20px', borderRadius: '20px', zIndex: 500, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-          {toast}
-        </div>
-      )}
-
+      {toast && <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#111111', color: '#fff', padding: '10px 20px', borderRadius: '20px', zIndex: 500, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>{toast}</div>}
       {isDrawerOpen && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>}
 
       <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
@@ -136,11 +97,12 @@ const CustomerLayout = () => {
         {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
-        {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
+        
+        {/* ✅ Props pass karo */}
+        {activeTab === 'profile' && <CustomerProfile userName={userName} userMobile={userMobile} onShowOrders={() => setActiveTab('orders')} />}
         
         {activeTab === 'orders' && <CustomerOrders />}
         {activeTab === 'addresses' && <CustomerAddresses />}
-
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
         {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
@@ -165,13 +127,19 @@ const CustomerLayout = () => {
             <OtpFlow 
               theme="black" 
               requiresName={true} 
-              onLogin={(user) => {
+              onLogin={async (user) => {
                 localStorage.setItem('fyntas_mobile', user.mobile);
                 if (user.name) localStorage.setItem('fyntas_name', user.name);
                 setUserMobile(user.mobile);
                 setUserName(user.name || 'User');
                 setIsLoggedIn(true);
                 setShowLogin(false);
+
+                // ✅ Fix: Admin ko Customer dikhane ke liye Customers table mein save karo
+                const { error } = await supabase
+                  .from('customers')
+                  .upsert({ mobile: user.mobile, name: user.name || 'User' }, { onConflict: 'mobile' });
+                if (error) console.error('Customer save error:', error);
               }} 
             />
           </div>
