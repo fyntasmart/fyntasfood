@@ -7,13 +7,21 @@ const InvoicePrint = () => {
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
-  const [format, setFormat] = useState('a4'); // a4, thermal-80, thermal-58
+  const [format, setFormat] = useState('a4'); // Default A4
+
+  // URL se format nikaalo (jaise ?format=thermal-80)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const formatParam = params.get('format');
+    if (formatParam) setFormat(formatParam);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: o } = await supabase.from('orders').select('*').eq('id', id).single();
       const { data: oi } = await supabase.from('order_items').select('*').eq('order_id', id);
       const { data: s } = await supabase.from('invoice_settings').select('*').single();
+      
       if (o) setOrder(o);
       if (oi) setItems(oi);
       if (s) setSettings(s);
@@ -27,15 +35,33 @@ const InvoicePrint = () => {
   return (
     <div style={{ fontFamily: 'monospace', padding: '20px', background: '#f8f9fa', minHeight: '100vh' }}>
       {/* Format Buttons */}
-      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-        <button onClick={() => setFormat('a4')} style={{ margin: '5px', padding: '10px', background: format === 'a4' ? '#111' : '#fff', color: format === 'a4' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px' }}>A4 Page</button>
-        <button onClick={() => setFormat('thermal-80')} style={{ margin: '5px', padding: '10px', background: format === 'thermal-80' ? '#111' : '#fff', color: format === 'thermal-80' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px' }}>Thermal 80mm</button>
-        <button onClick={() => setFormat('thermal-58')} style={{ margin: '5px', padding: '10px', background: format === 'thermal-58' ? '#111' : '#fff', color: format === 'thermal-58' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px' }}>Thermal 58mm</button>
-        <button onClick={() => window.print()} style={{ margin: '5px', padding: '10px', background: '#059669', color: '#fff', border: 'none', borderRadius: '5px' }}>Print</button>
+      <div style={{ marginBottom: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+        <button 
+          onClick={() => setFormat('a4')} 
+          style={{ margin: '5px', padding: '10px', background: format === 'a4' ? '#111' : '#fff', color: format === 'a4' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px', cursor: 'pointer' }}
+        >A4 Page</button>
+        <button 
+          onClick={() => setFormat('thermal-80')} 
+          style={{ margin: '5px', padding: '10px', background: format === 'thermal-80' ? '#111' : '#fff', color: format === 'thermal-80' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px', cursor: 'pointer' }}
+        >Thermal 80mm</button>
+        <button 
+          onClick={() => setFormat('thermal-58')} 
+          style={{ margin: '5px', padding: '10px', background: format === 'thermal-58' ? '#111' : '#fff', color: format === 'thermal-58' ? '#fff' : '#111', border: '1px solid #111', borderRadius: '5px', cursor: 'pointer' }}
+        >Thermal 58mm</button>
+        <button 
+          onClick={() => window.print()} 
+          style={{ margin: '5px', padding: '10px', background: '#059669', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+        >Print</button>
       </div>
 
-      {/* Printable Area */}
-      <div style={{ background: '#fff', margin: '0 auto', padding: '20px', maxWidth: format === 'a4' ? '210mm' : format === 'thermal-80' ? '80mm' : '58mm' }}>
+      {/* Printable Area - Width Format ke hisaab se */}
+      <div style={{ 
+        background: '#fff', 
+        margin: '0 auto', 
+        padding: '20px', 
+        maxWidth: format === 'a4' ? '210mm' : format === 'thermal-80' ? '80mm' : '58mm' 
+      }}>
+        
         {/* Header */}
         <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px' }}>
           <h2 style={{ margin: '0', fontSize: '18px', fontWeight: 'bold' }}>FYNTAS</h2>
@@ -50,7 +76,7 @@ const InvoicePrint = () => {
           <p style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}><span>Date:</span> <b>{new Date(order?.created_at).toLocaleString()}</b></p>
           <p style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}><span>Status:</span> <b>{order?.status?.toUpperCase()}</b></p>
           <p style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}><span>Customer:</span> <b>{order?.customer_name}</b></p>
-          <p style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}><span>Email:</span> <b>{order?.customer_mobile}</b></p>
+          <p style={{ display: 'flex', justifyContent: 'space-between', margin: '3px 0' }}><span>Mobile:</span> <b>{order?.customer_mobile}</b></p>
         </div>
 
         {/* ITEMS */}
@@ -70,7 +96,7 @@ const InvoicePrint = () => {
               {items.map((item, idx) => (
                 <tr key={item.id}>
                   <td>{idx + 1}</td>
-                  <td>{item.product_name || 'Item'}</td>
+                  <td>{item.product_name || 'Product'}</td>
                   <td>{item.quantity}</td>
                   <td>₹{item.price}</td>
                   <td>₹{item.price * item.quantity}</td>
