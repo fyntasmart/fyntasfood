@@ -80,7 +80,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingCat, setEditingCat] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProdModal, setIsProdModal] = useState(false);
-  const [prodMenu, setProdMenu] = useState(false);
+  const [prodMenu, setProdMenu] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isBranchModal, setIsBranchModal] = useState(false);
   const [branchMenu, setBranchMenu] = useState(false);
