@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Admin from './Admin.tsx';
 import CustomerLayout from './CustomerLayout.tsx';
+// ✅ Delivery Boy Dashboard import kiya
+import DeliveryBoyDashboard from './pages/DeliveryBoyDashboard';
 
 function App() {
   // Logout function - Admin ke logout button ke liye
@@ -19,6 +21,9 @@ function App() {
         
         {/* Admin Panel (Logout prop pass kiya) */}
         <Route path="/admin" element={<Admin onLogout={handleLogout} />} />
+
+        {/* ✅ Delivery Boy Dashboard (Naya Route) */}
+        <Route path="/delivery-boy" element={<DeliveryBoyDashboard />} />
       </Routes>
     </BrowserRouter>
   );
