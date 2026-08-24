@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
+// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -31,7 +32,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  // Products Filtering State
   const [productSearch, setProductSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -82,8 +82,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProdModal, setIsProdModal] = useState(false);
   
-  // ✅ FIX: prodMenu ko string | null define kiya
-  const [prodMenu, setProdMenu] = useState<string | null>(null);
+  // ✅ FIXED: prodMenu ab simple boolean hai
+  const [prodMenu, setProdMenu] = useState(false);
 
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isBranchModal, setIsBranchModal] = useState(false);
@@ -169,8 +169,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     handleCancelEditProduct(); fetchData();
   };
 
-  const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(null); fetchData(); };
-  const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); setProdMenu(null); fetchData(); };
+  const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData(); };
+  const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); setProdMenu(false); fetchData(); };
 
   const addCategory = async () => { if (!catName || !catShort) return alert('Category naam aur short code do!'); let imgUrl = ''; if (catImg) imgUrl = await uploadImage(catImg); await supabase.from('categories').insert({ name: catName, short_name: catShort, image_url: imgUrl }); setCatName(''); setCatShort(''); setCatImg(null); fetchData(); };
   const saveCategory = async () => { if (!selectedCategory) return; await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id); setEditingCat(false); setCatMenu(false); fetchData(); };
@@ -444,9 +444,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                         <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td>
                           <div className="menu-wrapper" ref={menuRef}>
-                            <button className="dots-btn" onClick={() => setProdMenu(prodMenu === p.id ? null : p.id)}>⋮</button>
-                            <div className={`dots-menu ${prodMenu === p.id ? 'show' : ''}`}>
-                              <button onClick={() => { handleStartEditProduct(p); setProdMenu(null); }}>✏️ Edit</button>
+                            {/* ✅ Fixed prodMenu boolean toggling */}
+                            <button className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</button>
+                            <div className={`dots-menu ${prodMenu ? 'show' : ''}`}>
+                              <button onClick={() => { handleStartEditProduct(p); setProdMenu(false); }}>✏️ Edit</button>
                               <button onClick={() => toggleProductActive(p)}>{p.is_active ? '🚫 Deactivate' : '✅ Activate'}</button>
                               <button className="danger" onClick={() => deleteProduct(p.id)}>🗑️ Delete</button>
                             </div>
@@ -676,6 +677,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       )}
 
+      {/* ✅ Fixed Product Modal prodMenu boolean */}
       {isProdModal && (
         <div className="modal-scrim show" onClick={() => setIsProdModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
