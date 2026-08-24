@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
-// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -9,7 +8,6 @@ interface Category { id: string; name: string; short_name: string; image_url?: s
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; category_id?: string; image_url?: string; image_2?: string; image_3?: string; image_4?: string; }
 interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; payment_method: string; payment_status: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
-// ✅ Updated Customer Interface with is_active
 interface Customer { id: string; name: string; mobile: string; created_at: string; is_active: boolean; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
@@ -33,10 +31,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
-  // Products Filtering States
   const [productSearch, setProductSearch] = useState('');
-  
-  // Orders Filtering States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +40,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // ✅ New Customer Management States
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerPage, setCustomerPage] = useState(1);
   const customerPerPage = 10;
@@ -53,14 +47,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [openCustomerMenuId, setOpenCustomerMenuId] = useState<string | null>(null);
   const customerMenuRef = useRef<HTMLDivElement>(null);
 
-  // Product Edit States
   const [editingProductFull, setEditingProductFull] = useState<Product | null>(null);
   const [selectedPage, setSelectedPage] = useState('about');
   const [currentContent, setCurrentContent] = useState('');
-  
-  // Forms
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
+
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -74,6 +66,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
+
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
@@ -88,7 +81,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
-  // Modals
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -133,17 +125,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (inv.data) setInvoiceSettings({ ...invoiceSettings, ...inv.data });
   };
 
-  // Close order & customer menus on outside click
-  useEffect(() => { 
-    const handleClickOutside = (event: MouseEvent) => { 
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpenOrderMenuId(null);
-      if (customerMenuRef.current && !customerMenuRef.current.contains(event.target as Node)) setOpenCustomerMenuId(null);
-    }; 
-    document.addEventListener('mousedown', handleClickOutside); 
-    return () => document.removeEventListener('mousedown', handleClickOutside); 
-  }, []);
-
   useEffect(() => { fetchData(); const interval = setInterval(fetchData, 10000); return () => clearInterval(interval); }, []);
+  useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpenOrderMenuId(null); if (customerMenuRef.current && !customerMenuRef.current.contains(event.target as Node)) setOpenCustomerMenuId(null); }; document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, []);
 
   const uploadImage = async (file: File) => {
     const path = `${Date.now()}_${file.name}`;
@@ -191,12 +174,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData(); };
   const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); fetchData(); };
-  
+
   const addCategory = async () => { if (!catName || !catShort) return alert('Category naam aur short code do!'); let imgUrl = ''; if (catImg) imgUrl = await uploadImage(catImg); await supabase.from('categories').insert({ name: catName, short_name: catShort, image_url: imgUrl }); setCatName(''); setCatShort(''); setCatImg(null); fetchData(); };
   const saveCategory = async () => { if (!selectedCategory) return; await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id); setEditingCat(false); setCatMenu(false); fetchData(); };
   const toggleCategoryActive = async (cat: Category) => { await supabase.from('categories').update({ is_active: !cat.is_active }).eq('id', cat.id); setSelectedCategory({ ...cat, is_active: !cat.is_active }); setCatMenu(false); fetchData(); };
   const deleteCategory = async (id: string) => { if (!confirm('Category delete karna hai?')) return; await supabase.from('categories').delete().eq('id', id); setIsCatModal(false); fetchData(); };
-  
+
   const addBranch = async () => { if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!'); await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 }); setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); setNewBranchMaxKm('15'); fetchData(); };
   const saveBranch = async () => { if (!selectedBranch) return; await supabase.from('branches').update(selectedBranch).eq('id', selectedBranch.id); setEditingBranch(false); setBranchMenu(false); fetchData(); };
   const deleteBranch = async (id: string) => { if (!confirm('Branch delete karna hai?')) return; await supabase.from('branches').delete().eq('id', id); setIsBranchModal(false); fetchData(); };
@@ -212,21 +195,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const printReceipt = (orderId: string, format: string) => { window.open(`/invoice/${orderId}?format=${format}`, '_blank'); };
   const assignDeliveryBoy = async (orderId: string, boyId: string) => { if (!boyId) return; await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId); setOpenOrderMenuId(null); fetchData(); };
 
-  // ✅ Customer Functions (New)
-  const toggleCustomerActive = async (customer: Customer) => {
-    const newStatus = !customer.is_active;
-    await supabase.from('customers').update({ is_active: newStatus }).eq('id', customer.id);
-    setSelectedCustomerForView({ ...customer, is_active: newStatus });
-    setOpenCustomerMenuId(null);
-    fetchData();
-  };
-  const deleteCustomer = async (id: string) => {
-    if (!confirm('Kya aap yeh customer delete karna chahte hain?')) return;
-    await supabase.from('customers').delete().eq('id', id);
-    setSelectedCustomerForView(null);
-    setOpenCustomerMenuId(null);
-    fetchData();
-  };
+  const toggleCustomerActive = async (customer: Customer) => { await supabase.from('customers').update({ is_active: !customer.is_active }).eq('id', customer.id); setSelectedCustomerForView({ ...customer, is_active: !customer.is_active }); setOpenCustomerMenuId(null); fetchData(); };
+  const deleteCustomer = async (id: string) => { if (!confirm('Kya aap yeh customer delete karna chahte hain?')) return; await supabase.from('customers').delete().eq('id', id); setSelectedCustomerForView(null); setOpenCustomerMenuId(null); fetchData(); };
 
   const addTier = async () => { const last = tiers[tiers.length - 1]; const min = last ? last.max_km : 0; const max = min + 2; const price = last ? last.price + 10 : 10; await supabase.from('delivery_tiers').insert({ min_km: min, max_km: max, price }); fetchData(); };
   const deleteTier = async (id: string) => { if (tiers.length <= 1) return alert('Ek tier toh hona chahiye!'); await supabase.from('delivery_tiers').delete().eq('id', id); fetchData(); };
@@ -243,25 +213,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  // ✅ Customer Filtering & Pagination
-  const filteredCustomers = customers.filter(c => {
-    const matchesSearch = (c.name || '').toLowerCase().includes(customerSearch.toLowerCase()) || (c.mobile || '').includes(customerSearch);
-    return matchesSearch;
-  });
+  const filteredCustomers = customers.filter(c => { const matchesSearch = (c.name || '').toLowerCase().includes(customerSearch.toLowerCase()) || (c.mobile || '').includes(customerSearch); return matchesSearch; });
   const indexOfLastCustomer = customerPage * customerPerPage;
   const indexOfFirstCustomer = indexOfLastCustomer - customerPerPage;
   const currentCustomers = filteredCustomers.slice(indexOfFirstCustomer, indexOfLastCustomer);
 
-  // ✅ Customer Detail Stats
   const getCustomerOrders = (mobile: string) => orders.filter(o => o.customer_mobile === mobile);
-  const getCustomerStats = (customer: Customer) => {
-    const custOrders = getCustomerOrders(customer.mobile);
-    const totalSpent = custOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-    const completed = custOrders.filter(o => o.status === 'delivered' || o.status === 'completed').length;
-    const cancelled = custOrders.filter(o => o.status === 'cancelled').length;
-    const avgOrder = custOrders.length > 0 ? totalSpent / custOrders.length : 0;
-    return { totalOrders: custOrders.length, totalSpent, completed, cancelled, avgOrder };
-  };
+  const getCustomerStats = (customer: Customer) => { const custOrders = getCustomerOrders(customer.mobile); const totalSpent = custOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0); const completed = custOrders.filter(o => o.status === 'delivered' || o.status === 'completed').length; const cancelled = custOrders.filter(o => o.status === 'cancelled').length; const avgOrder = custOrders.length > 0 ? totalSpent / custOrders.length : 0; return { totalOrders: custOrders.length, totalSpent, completed, cancelled, avgOrder }; };
 
   const filteredProducts = products.filter(p => { const matchesSearch = (p.name || '').toLowerCase().includes(productSearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(productSearch.toLowerCase()); return matchesSearch; });
   const totalProducts = products.length;
@@ -326,8 +284,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .stat-card.red .val { color: #dc2626; }
         .stat-card.yellow .val { color: #d97706; }
         .products-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        
-        /* Customer UI Specific */
         .customer-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
         .customer-detail-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; margin-bottom: 20px; }
         .customer-profile-card { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
@@ -385,27 +341,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                       <td>{order.payment_method === 'upi' ? 'UPI' : 'COD'}</td>
                       <td><select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value)} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', border: '1px solid #d1d5db', borderRadius: '4px' }}>{statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></td>
                       <td>{new Date(order.created_at).toLocaleString()}</td>
-                      <td>
-                        <div className="menu-wrapper" ref={menuRef}>
-                          <button className="dots-btn" onClick={() => setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id)}>⋮</button>
-                          <div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`}>
-                            <button onClick={() => { setSelectedOrderForView(order); setOpenOrderMenuId(null); }}>👁️ View Details</button>
-                            <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
-                              <div style={{ padding: '0 14px', fontSize: '11px', color: '#6b7280' }}>Print Receipt</div>
-                              <button onClick={() => printReceipt(order.id, 'a4')}>🖨️ Normal (A4)</button>
-                              <button onClick={() => printReceipt(order.id, 'thermal-80')}>🖨️ Thermal 80mm</button>
-                              <button onClick={() => printReceipt(order.id, 'thermal-58')}>🖨️ Thermal 58mm</button>
-                            </div>
-                            <div style={{ borderTop: '1px solid #f3f4f6' }}>
-                              <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '8px 14px', width: '100%', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>
-                                <option value="">🛵 Assign Boy</option>
-                                {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
-                              </select>
-                            </div>
-                            <button className="danger" onClick={() => deleteOrder(order.id)}>🗑️ Delete</button>
-                          </div>
-                        </div>
-                      </td>
+                      <td><div className="menu-wrapper" ref={menuRef}><button className="dots-btn" onClick={() => setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id)}>⋮</button><div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`}><button onClick={() => { setSelectedOrderForView(order); setOpenOrderMenuId(null); }}>👁️ View Details</button><button onClick={() => printReceipt(order.id, 'a4')}>🖨️ Normal (A4)</button><button onClick={() => printReceipt(order.id, 'thermal-80')}>🖨️ Thermal 80mm</button><button onClick={() => printReceipt(order.id, 'thermal-58')}>🖨️ Thermal 58mm</button><button onClick={() => deleteOrder(order.id)}>🗑️ Delete</button></div></div></td>
                     </tr>
                   ))
                 )}
@@ -422,10 +358,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         {activeTab === 'products' && (
           <div>
             <div className="products-header">
-              <div>
-                <h1 style={{ margin: 0 }}>Products</h1>
-                <p style={{ margin: '5px 0 0', color: '#6b7280' }}>Manage your product catalog and inventory</p>
-              </div>
+              <div><h1 style={{ margin: 0 }}>Products</h1><p style={{ margin: '5px 0 0', color: '#6b7280' }}>Manage your product catalog and inventory</p></div>
               <button className="btn btn-black" onClick={() => { setEditingProductFull(null); handleCancelEditProduct(); }}>+ Add Product</button>
             </div>
             <div className="stats-grid">
@@ -435,54 +368,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <div className="stat-card red"><div className="val">{outOfStock}</div><div className="lbl">Out of Stock</div></div>
             </div>
             <div className="panel">
-              <div className="table-controls">
-                <h3 style={{ margin: 0 }}>All Products</h3>
-                <input type="text" placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} style={{ maxWidth: '250px' }} />
-              </div>
+              <div className="table-controls"><h3 style={{ margin: 0 }}>All Products</h3><input type="text" placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} style={{ maxWidth: '250px' }} /></div>
               {editingProductFull ? (
-                <div style={{ marginBottom: '20px' }}>
-                  <h3>Edit Product (Units + 4 Images + GST)</h3>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <button className="btn btn-red" onClick={handleCancelEditProduct}>← Back to List</button>
-                    <h3 style={{ margin: 0 }}>{editingProductFull.name}</h3>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
-                    <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
-                    <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}><option value="">Select Category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                    <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
-                    <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
-                    <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>{UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select>
-                    <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}><option value="none">No Discount</option><option value="percent">Percentage (%)</option><option value="amount">Flat Amount (₹)</option></select>
-                      {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
-                      {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
-                    </div>
-                    <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image {editingProductFull.image_url && <span style={{ color: 'green' }}>(Current Has Image)</span>}</label><input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} /></div>
-                    <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3) {editingProductFull.image_2 && <span style={{ color: 'green' }}>(Current Has Gallery)</span>}</label><input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} /></div>
-                  </div>
-                  <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Update Product</button>
-                </div>
+                <div style={{ marginBottom: '20px' }}><h3>Edit Product (Units + 4 Images + GST)</h3><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}><button className="btn btn-red" onClick={handleCancelEditProduct}>← Back to List</button><h3 style={{ margin: 0 }}>{editingProductFull.name}</h3></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}><input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} /><input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} /><select value={prodCat} onChange={(e) => setProdCat(e.target.value)}><option value="">Select Category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} /><input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} /><select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>{UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select><textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea><div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><select value={discountType} onChange={(e) => setDiscountType(e.target.value)}><option value="none">No Discount</option><option value="percent">Percentage (%)</option><option value="amount">Flat Amount (₹)</option></select>{discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}</div><div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>{gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}</div><div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image {editingProductFull.image_url && <span style={{ color: 'green' }}>(Current Has Image)</span>}</label><input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} /></div><div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3) {editingProductFull.image_2 && <span style={{ color: 'green' }}>(Current Has Gallery)</span>}</label><input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} /></div></div><button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Update Product</button></div>
               ) : (
                 <table className="order-table">
                   <thead><tr><th>Image</th><th>Name</th><th>SKU</th><th>Category</th><th>Stock</th><th>Unit</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {filteredProducts.map(p => (
-                      <tr key={p.id}>
-                        <td>{p.image_url ? <img src={p.image_url} alt="prod" style={{ width: 40, height: 40, borderRadius: 8 }} /> : 'No Img'}</td>
-                        <td style={{ fontWeight: '600' }}>{p.name}<br /><span style={{ fontSize: '11px', color: '#6b7280' }}>{p.unit || ''}</span></td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.sku || '-'}</td>
-                        <td>{categories.find(c => c.id === p.category_id)?.name || '-'}</td>
-                        <td>{p.stock}</td>
-                        <td>{p.unit || 'Pcs'}</td>
-                        <td style={{ fontWeight: '700' }}>₹{p.price}</td>
-                        <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
-                        <td><div className="menu-wrapper" ref={menuRef}><button className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</button><div className={`dots-menu ${prodMenu ? 'show' : ''}`}><button onClick={() => { handleStartEditProduct(p); setProdMenu(false); }}>✏️ Edit</button><button onClick={() => toggleProductActive(p)}>{p.is_active ? '🚫 Deactivate' : '✅ Activate'}</button><button className="danger" onClick={() => deleteProduct(p.id)}>🗑️ Delete</button></div></div></td>
-                      </tr>
+                      <tr key={p.id}><td>{p.image_url ? <img src={p.image_url} alt="prod" style={{ width: 40, height: 40, borderRadius: 8 }} /> : 'No Img'}</td><td style={{ fontWeight: '600' }}>{p.name}<br /><span style={{ fontSize: '11px', color: '#6b7280' }}>{p.unit || ''}</span></td><td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.sku || '-'}</td><td>{categories.find(c => c.id === p.category_id)?.name || '-'}</td><td>{p.stock}</td><td>{p.unit || 'Pcs'}</td><td style={{ fontWeight: '700' }}>₹{p.price}</td><td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td><td><div className="menu-wrapper" ref={menuRef}><button className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</button><div className={`dots-menu ${prodMenu ? 'show' : ''}`}><button onClick={() => { handleStartEditProduct(p); setProdMenu(false); }}>✏️ Edit</button><button onClick={() => toggleProductActive(p)}>{p.is_active ? '🚫 Deactivate' : '✅ Activate'}</button><button className="danger" onClick={() => deleteProduct(p.id)}>🗑️ Delete</button></div></div></td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -495,24 +389,16 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         {activeTab === 'customers' && (
           <div>
             <div className="products-header">
-              <div>
-                <h1 style={{ margin: 0 }}>Customers</h1>
-                <p style={{ margin: '5px 0 0', color: '#6b7280' }}>Manage your customer base and view their order history</p>
-              </div>
+              <div><h1 style={{ margin: 0 }}>Customers</h1><p style={{ margin: '5px 0 0', color: '#6b7280' }}>Manage your customer base and view their order history</p></div>
               <button className="btn btn-black" onClick={exportCustomers}>Export Excel (CSV)</button>
             </div>
-
             <div className="customer-stats">
               <div className="stat-card"><div className="val">{customers.length}</div><div className="lbl">Total Customers</div></div>
               <div className="stat-card green"><div className="val">{customers.filter(c => c.is_active).length}</div><div className="lbl">Verified Customers</div></div>
               <div className="stat-card yellow"><div className="val">{customers.filter(c => !c.is_active).length}</div><div className="lbl">Unverified Customers</div></div>
             </div>
-
             <div className="panel">
-              <div className="table-controls">
-                <h3 style={{ margin: 0 }}>Customers</h3>
-                <input type="text" placeholder="Search by name, mobile..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} style={{ maxWidth: '250px' }} />
-              </div>
+              <div className="table-controls"><h3 style={{ margin: 0 }}>Customers</h3><input type="text" placeholder="Search by name, mobile..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} style={{ maxWidth: '250px' }} /></div>
               <table className="order-table">
                 <thead><tr><th>ID</th><th>Customer</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
                 <tbody>
@@ -524,16 +410,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                         <td>{customer.mobile}</td>
                         <td><span className={`status-pill ${customer.is_active ? 'active' : 'inactive'}`}>{customer.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td>{new Date(customer.created_at).toLocaleDateString()}</td>
-                        <td>
-                          <div className="menu-wrapper" ref={customerMenuRef}>
-                            <button className="dots-btn" onClick={() => setOpenCustomerMenuId(openCustomerMenuId === customer.id ? null : customer.id)}>⋮</button>
-                            <div className={`dots-menu ${openCustomerMenuId === customer.id ? 'show' : ''}`}>
-                              <button onClick={() => { setSelectedCustomerForView(customer); setOpenCustomerMenuId(null); }}>👁️ View Details</button>
-                              <button onClick={() => toggleCustomerActive(customer)}>{customer.is_active ? '🚫 Deactivate' : '✅ Activate'}</button>
-                              <button className="danger" onClick={() => deleteCustomer(customer.id)}>🗑️ Delete</button>
-                            </div>
-                          </div>
-                        </td>
+                        <td><div className="menu-wrapper" ref={customerMenuRef}><button className="dots-btn" onClick={() => setOpenCustomerMenuId(openCustomerMenuId === customer.id ? null : customer.id)}>⋮</button><div className={`dots-menu ${openCustomerMenuId === customer.id ? 'show' : ''}`}><button onClick={() => { setSelectedCustomerForView(customer); setOpenCustomerMenuId(null); }}>👁️ View Details</button><button onClick={() => toggleCustomerActive(customer)}>{customer.is_active ? '🚫 Deactivate' : '✅ Activate'}</button><button className="danger" onClick={() => deleteCustomer(customer.id)}>🗑️ Delete</button></div></div></td>
                       </tr>
                     ))
                   )}
@@ -698,9 +575,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         {activeTab === 'content' && (
           <div className="panel">
             <h3>Manage App Content</h3>
-            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
-              Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.
-            </p>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>Yahan se aap About, Privacy Policy, Terms & Conditions, aur Refund Policy ka text edit kar sakte hain.</p>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
               <select value={selectedPage} onChange={(e) => handleSelectPage(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }}>
                 <option value="about">About Us</option>
@@ -716,31 +591,78 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       {/* Modals */}
-      {/* Customer Detail Modal */}
+      {isCatModal && (
+        <div className="modal-scrim show" onClick={() => setIsCatModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedCategory?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setCatMenu(!catMenu)}>⋮</div>
+                <div className={`dots-menu ${catMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingCat(true); setCatMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleCategoryActive(selectedCategory!)}>{selectedCategory?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteCategory(selectedCategory!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsCatModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingCat ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedCategory!.name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Short</span><input value={selectedCategory!.short_name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, short_name: e.target.value })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingCat(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveCategory}>Save</button>
+                  </div>
+                </div>
+              ) : <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedCategory?.is_active ? 'Active' : 'Inactive'}</span></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isProdModal && (
+        <div className="modal-scrim show" onClick={() => setIsProdModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedProduct?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</div>
+                <div className={`dots-menu ${prodMenu ? 'show' : ''}`}>
+                  <button onClick={() => { handleStartEditProduct(selectedProduct!); }}>✏️ Edit (Full Page)</button>
+                  <button onClick={() => toggleProductActive(selectedProduct!)}>{selectedProduct?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteProduct(selectedProduct!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsProdModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><span className="dl">SKU</span><span className="dv">{selectedProduct?.sku}</span></div>
+              <div className="detail-row"><span className="dl">Price</span><span className="dv">₹{selectedProduct?.price}</span></div>
+              <div className="detail-row"><span className="dl">Unit</span><span className="dv">{selectedProduct?.unit || 'Pcs'}</span></div>
+              <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedProduct?.is_active ? 'Active' : 'Inactive'}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Detail Modal (New) */}
       {selectedCustomerForView && (
         <div className="modal-scrim show" onClick={() => setSelectedCustomerForView(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Customer Details</h3>
-              <div className="modal-close" onClick={() => setSelectedCustomerForView(null)}>✕</div>
-            </div>
+            <div className="modal-head"><h3>Customer Details</h3><div className="modal-close" onClick={() => setSelectedCustomerForView(null)}>✕</div></div>
             <div className="modal-body">
               <div className="customer-detail-grid">
-                {/* Profile */}
                 <div className="customer-profile-card">
                   <div className="customer-profile-avatar">👤</div>
                   <div style={{ fontWeight: '700', fontSize: '18px' }}>{selectedCustomerForView.name || 'Unknown'}</div>
                   <div style={{ color: '#6b7280', marginTop: '5px' }}>#{selectedCustomerForView.id.slice(0, 6)}</div>
-                  <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+                  <div style={{ marginTop: '15px' }}>
                     <span className={`status-pill ${selectedCustomerForView.is_active ? 'active' : 'inactive'}`}>{selectedCustomerForView.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                   <div style={{ marginTop: '15px', fontSize: '14px', color: '#6b7280' }}>
-                    📞 {selectedCustomerForView.mobile}
-                    <br />📅 Joined: {new Date(selectedCustomerForView.created_at).toLocaleDateString()}
+                    📞 {selectedCustomerForView.mobile}<br />📅 Joined: {new Date(selectedCustomerForView.created_at).toLocaleDateString()}
                   </div>
                 </div>
-
-                {/* Stats */}
                 <div className="customer-detail-stats">
                   <div className="customer-detail-stat"><div style={{ fontSize: '18px', fontWeight: '800' }}>{getCustomerStats(selectedCustomerForView).totalOrders}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Total Orders</div></div>
                   <div className="customer-detail-stat"><div style={{ fontSize: '18px', fontWeight: '800' }}>₹{getCustomerStats(selectedCustomerForView).totalSpent.toFixed(2)}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Total Spent</div></div>
@@ -749,8 +671,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                   <div className="customer-detail-stat"><div style={{ fontSize: '18px', fontWeight: '800', color: '#dc2626' }}>{getCustomerStats(selectedCustomerForView).cancelled}</div><div style={{ fontSize: '12px', color: '#6b7280' }}>Cancelled</div></div>
                 </div>
               </div>
-
-              {/* Order History */}
               <div style={{ marginTop: '20px' }}>
                 <h4>Order History</h4>
                 {getCustomerOrders(selectedCustomerForView.mobile).length === 0 ? <p style={{ color: '#6b7280' }}>No orders yet.</p> : (
@@ -776,12 +696,103 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       )}
 
-      {/* Baaki Modals (Same as before) */}
-      {isCatModal && ( /* ... */ )}
-      {isProdModal && ( /* ... */ )}
-      {isBranchModal && ( /* ... */ )}
-      {isBoyModal && ( /* ... */ )}
-      {selectedOrderForView && ( /* ... */ )}
+      {isBranchModal && (
+        <div className="modal-scrim show" onClick={() => setIsBranchModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedBranch?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setBranchMenu(!branchMenu)}>⋮</div>
+                <div className={`dots-menu ${branchMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingBranch(true); setBranchMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleBranchActive(selectedBranch!)}>{selectedBranch?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteBranch(selectedBranch!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsBranchModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingBranch ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedBranch!.name} onChange={(e) => setSelectedBranch({ ...selectedBranch!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Lat</span><input type="number" value={selectedBranch!.lat} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lat: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Lng</span><input type="number" value={selectedBranch!.lng} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lng: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Range (KM)</span><input type="number" value={selectedBranch!.delivery_range_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, delivery_range_km: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Max Delivery (KM)</span><input type="number" value={selectedBranch!.max_delivery_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, max_delivery_km: parseFloat(e.target.value) })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingBranch(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveBranch}>Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBranch?.address || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Lat</span><span className="dv">{selectedBranch?.lat}</span></div>
+                  <div className="detail-row"><span className="dl">Lng</span><span className="dv">{selectedBranch?.lng}</span></div>
+                  <div className="detail-row"><span className="dl">Range</span><span className="dv">{selectedBranch?.delivery_range_km} KM</span></div>
+                  <div className="detail-row"><span className="dl">Max</span><span className="dv">{selectedBranch?.max_delivery_km} KM</span></div>
+                  <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBranch?.is_active ? 'Active' : 'Inactive'}</span></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBoyModal && (
+        <div className="modal-scrim show" onClick={() => setIsBoyModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedBoy?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setBoyMenu(!boyMenu)}>⋮</div>
+                <div className={`dots-menu ${boyMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingBoy(true); setBoyMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleBoyActive(selectedBoy!)}>{selectedBoy?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteBoy(selectedBoy!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsBoyModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingBoy ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedBoy!.name} onChange={(e) => setSelectedBoy({ ...selectedBoy!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Mobile</span><input value={selectedBoy!.mobile} onChange={(e) => setSelectedBoy({ ...selectedBoy!, mobile: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Aadhar</span><input value={selectedBoy!.aadhar || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, aadhar: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Address</span><input value={selectedBoy!.address || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, address: e.target.value })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingBoy(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveBoy}>Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><span className="dv">{selectedBoy?.name}</span></div>
+                  <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedBoy?.mobile}</span></div>
+                  <div className="detail-row"><span className="dl">Aadhar</span><span className="dv">{selectedBoy?.aadhar || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBoy?.address || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBoy?.is_active ? 'Active' : 'Inactive'}</span></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedOrderForView && (
+        <div className="modal-scrim show" onClick={() => setSelectedOrderForView(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>Order Details</h3><div className="modal-close" onClick={() => setSelectedOrderForView(null)}>✕</div></div>
+            <div className="modal-body">
+              <div className="detail-row"><span className="dl">Order ID</span><span className="dv">ORD{selectedOrderForView.id.slice(0, 6).toUpperCase()}</span></div>
+              <div className="detail-row"><span className="dl">Customer</span><span className="dv">{selectedOrderForView.customer_name}</span></div>
+              <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedOrderForView.customer_mobile}</span></div>
+              <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedOrderForView.address}</span></div>
+              <div className="detail-row"><span className="dl">Delivery Charge</span><span className="dv">₹{selectedOrderForView.delivery_charge}</span></div>
+              <div className="detail-row"><span className="dl">Total</span><span className="dv" style={{ fontWeight: 'bold', color: '#059669' }}>₹{selectedOrderForView.total_amount}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
