@@ -5,7 +5,6 @@ interface Branch { id: string; name: string; address?: string; lat: number; lng:
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
-// ✅ FIX: Product interface mein saare fields add kiye hain
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; category_id?: string; image_url?: string; image_2?: string; image_3?: string; image_4?: string; }
 interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
@@ -66,6 +65,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
+  // Modal States
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -84,6 +84,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [isBoyModal, setIsBoyModal] = useState(false);
   const [boyMenu, setBoyMenu] = useState(false);
   const [editingBoy, setEditingBoy] = useState(false);
+  
+  // 🔥 Delivery Boy Mobile Sync fix ke liye
+  const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
@@ -120,6 +123,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
+  // Product Full Page Edit
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name);
@@ -147,11 +151,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const addOrUpdateProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
+    
     let mainImageUrl = editingProductFull?.image_url || '';
     if (mainImage) {
       const url = await uploadImage(mainImage);
       if (url) mainImageUrl = url;
     }
+    
     const galleryUrls = [editingProductFull?.image_2 || '', editingProductFull?.image_3 || '', editingProductFull?.image_4 || ''];
     if (galleryImages.length > 0) {
       for (let i = 0; i < galleryImages.length; i++) {
@@ -159,6 +165,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         if (url) galleryUrls[i] = url;
       }
     }
+
     const productData = {
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
@@ -168,6 +175,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
       gst_enabled: gstEnabled, gst_rate: gstRate
     };
+
     if (editingProductFull) {
       const { error } = await supabase.from('products').update(productData).eq('id', editingProductFull.id);
       if (error) { alert('Product update nahi hua: ' + error.message); return; }
@@ -177,55 +185,23 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       if (error) { alert('Product add nahi hua: ' + error.message); return; }
       alert('Product Added!');
     }
+    
     handleCancelEditProduct();
     fetchData();
   };
 
-  const handleSelectPage = (key: string) => {
-    setSelectedPage(key);
-    const page = appPages.find(p => p.page_key === key);
-    setCurrentContent(page ? page.content : '');
+  const toggleProductActive = async (prod: Product) => {
+    await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id);
+    setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData();
   };
 
-  const saveContent = async () => {
-    const { error } = await supabase.from('app_pages').upsert(
-      { page_key: selectedPage, content: currentContent },
-      { onConflict: 'page_key' }
-    );
-    if (!error) { alert('Content saved successfully!'); fetchData(); }
-    else { alert('Error: ' + error.message); }
+  const deleteProduct = async (id: string) => {
+    if (!confirm('Product delete karna hai?')) return;
+    await supabase.from('products').delete().eq('id', id);
+    setIsProdModal(false); fetchData();
   };
 
-  const updateOrderStatus = async (id: string, status: string) => {
-    await supabase.from('orders').update({ status }).eq('id', id);
-    fetchData();
-  };
-
-  const assignDeliveryBoy = async (orderId: string, boyId: string) => {
-    if (!boyId) return;
-    await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId);
-    fetchData();
-  };
-
-  const addBanner = async () => {
-    if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
-    let imgUrl = '';
-    if (bannerImg) imgUrl = await uploadImage(bannerImg);
-    await supabase.from('banners').insert({ title: bannerTitle, image_url: imgUrl });
-    setBannerTitle(''); setBannerImg(null); fetchData();
-  };
-
-  const toggleBannerActive = async (banner: Banner) => {
-    await supabase.from('banners').update({ is_active: !banner.is_active }).eq('id', banner.id);
-    fetchData();
-  };
-
-  const deleteBanner = async (id: string) => {
-    if (!confirm('Banner delete karna hai?')) return;
-    await supabase.from('banners').delete().eq('id', id);
-    fetchData();
-  };
-
+  // Category Functions
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -251,17 +227,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsCatModal(false); fetchData();
   };
 
-  const toggleProductActive = async (prod: Product) => {
-    await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id);
-    setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData();
-  };
-
-  const deleteProduct = async (id: string) => {
-    if (!confirm('Product delete karna hai?')) return;
-    await supabase.from('products').delete().eq('id', id);
-    setIsProdModal(false); fetchData();
-  };
-
+  // Branch Functions
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
@@ -285,15 +251,25 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
+  // Delivery Boy Functions (With Mobile Sync Fix)
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
+    await supabase.from('registered_users').insert({ mobile: dbMobile, role: 'delivery_boy' });
     setDbName(''); setDbMobile(''); setDbAadhar(''); setDbAddress(''); fetchData();
   };
 
+  // 🔥 Main Fix Yahan hai
   const saveBoy = async () => {
     if (!selectedBoy) return;
-    await supabase.from('delivery_boys').update(selectedBoy).eq('id', selectedBoy.id);
+    const { error } = await supabase.from('delivery_boys').update(selectedBoy).eq('id', selectedBoy.id);
+    if (error) { alert('Update error: ' + error.message); return; }
+    
+    // Agar mobile number change hua hai, toh registered_users table mein bhi update karo
+    if (originalBoyMobile !== selectedBoy.mobile) {
+      await supabase.from('registered_users').update({ mobile: selectedBoy.mobile }).eq('mobile', originalBoyMobile);
+    }
+    
     setEditingBoy(false); setBoyMenu(false); fetchData();
   };
 
@@ -308,6 +284,19 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
+  // Order Functions
+  const updateOrderStatus = async (id: string, status: string) => {
+    await supabase.from('orders').update({ status }).eq('id', id);
+    fetchData();
+  };
+
+  const assignDeliveryBoy = async (orderId: string, boyId: string) => {
+    if (!boyId) return;
+    await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId);
+    fetchData();
+  };
+
+  // Tier Functions
   const addTier = async () => {
     const last = tiers[tiers.length - 1];
     const min = last ? last.max_km : 0;
@@ -323,6 +312,43 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
+  // Banner Functions
+  const addBanner = async () => {
+    if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
+    let imgUrl = '';
+    if (bannerImg) imgUrl = await uploadImage(bannerImg);
+    await supabase.from('banners').insert({ title: bannerTitle, image_url: imgUrl });
+    setBannerTitle(''); setBannerImg(null); fetchData();
+  };
+
+  const toggleBannerActive = async (banner: Banner) => {
+    await supabase.from('banners').update({ is_active: !banner.is_active }).eq('id', banner.id);
+    fetchData();
+  };
+
+  const deleteBanner = async (id: string) => {
+    if (!confirm('Banner delete karna hai?')) return;
+    await supabase.from('banners').delete().eq('id', id);
+    fetchData();
+  };
+
+  // Content Functions
+  const handleSelectPage = (key: string) => {
+    setSelectedPage(key);
+    const page = appPages.find(p => p.page_key === key);
+    setCurrentContent(page ? page.content : '');
+  };
+
+  const saveContent = async () => {
+    const { error } = await supabase.from('app_pages').upsert(
+      { page_key: selectedPage, content: currentContent },
+      { onConflict: 'page_key' }
+    );
+    if (!error) { alert('Content saved successfully!'); fetchData(); }
+    else { alert('Error: ' + error.message); }
+  };
+
+  // Customer Export
   const exportCustomers = () => {
     const header = ["Name", "Mobile Number"];
     const rows = customers.map(c => [c.name || 'Unknown', c.mobile]);
@@ -636,7 +662,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             </div>
             <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addDeliveryBoy}>Add Boy</button>
             <h3 style={{ marginTop: '20px' }}>All Boys (Click Name)</h3>
-            {deliveryBoys.map(boy => <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setIsBoyModal(true); setBoyMenu(false); setEditingBoy(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{boy.name}</span> - {boy.mobile}</div>)}
+            {deliveryBoys.map(boy => <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setOriginalBoyMobile(boy.mobile); setIsBoyModal(true); setBoyMenu(false); setEditingBoy(false); }}><span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{boy.name}</span> - {boy.mobile}</div>)}
           </div>
         )}
 
@@ -817,7 +843,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       </div>
 
-      {/* Delivery Boy Modal */}
+      {/* Delivery Boy Modal - Full Details */}
       <div className={`modal-scrim ${isBoyModal ? 'show' : ''}`} onClick={() => setIsBoyModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head"><h3>{selectedBoy?.name}</h3>
