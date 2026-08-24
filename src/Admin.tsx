@@ -5,7 +5,8 @@ interface Branch { id: string; name: string; address?: string; lat: number; lng:
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
-interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; }
+// ✅ FIX: Product interface mein saare fields add kiye hain
+interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; category_id?: string; image_url?: string; image_2?: string; image_3?: string; image_4?: string; }
 interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
@@ -73,7 +74,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProdModal, setIsProdModal] = useState(false);
   const [prodMenu, setProdMenu] = useState(false);
-  const [editingProd, setEditingProd] = useState(false);
 
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isBranchModal, setIsBranchModal] = useState(false);
@@ -147,13 +147,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const addOrUpdateProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
-    
     let mainImageUrl = editingProductFull?.image_url || '';
     if (mainImage) {
       const url = await uploadImage(mainImage);
       if (url) mainImageUrl = url;
     }
-    
     const galleryUrls = [editingProductFull?.image_2 || '', editingProductFull?.image_3 || '', editingProductFull?.image_4 || ''];
     if (galleryImages.length > 0) {
       for (let i = 0; i < galleryImages.length; i++) {
@@ -161,7 +159,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         if (url) galleryUrls[i] = url;
       }
     }
-
     const productData = {
       name: prodName, sku: prodSku, category_id: prodCat,
       price: parseFloat(prodPrice) || 0, stock: parseInt(prodStock) || 0,
@@ -171,7 +168,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       discount_type: discountType, discount_value: parseFloat(discountValue) || 0,
       gst_enabled: gstEnabled, gst_rate: gstRate
     };
-
     if (editingProductFull) {
       const { error } = await supabase.from('products').update(productData).eq('id', editingProductFull.id);
       if (error) { alert('Product update nahi hua: ' + error.message); return; }
@@ -181,7 +177,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       if (error) { alert('Product add nahi hua: ' + error.message); return; }
       alert('Product Added!');
     }
-    
     handleCancelEditProduct();
     fetchData();
   };
@@ -254,12 +249,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (!confirm('Category delete karna hai?')) return;
     await supabase.from('categories').delete().eq('id', id);
     setIsCatModal(false); fetchData();
-  };
-
-  const saveProduct = async () => {
-    if (!selectedProduct) return;
-    await supabase.from('products').update(selectedProduct).eq('id', selectedProduct.id);
-    setEditingProd(false); setProdMenu(false); fetchData();
   };
 
   const toggleProductActive = async (prod: Product) => {
@@ -558,7 +547,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                   <tr key={p.id}>
                     <td>{p.name}</td><td>{p.sku}</td><td>{p.unit || 'Pcs'}</td><td>₹{p.price}</td>
                     <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
-                    <td><div className="dots-btn" onClick={() => { setSelectedProduct(p); setIsProdModal(true); setProdMenu(false); setEditingProd(false); }}>⋮</div></td>
+                    <td><div className="dots-btn" onClick={() => { setSelectedProduct(p); setIsProdModal(true); setProdMenu(false); }}>⋮</div></td>
                   </tr>
                 ))}
               </tbody>
