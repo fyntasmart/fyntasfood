@@ -9,7 +9,7 @@ import ProductPage from './pages/ProductPage';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerAddresses from './pages/CustomerAddresses';
 import { supabase } from './supabaseClient';
-import OtpFlow from './components/OtpFlow'; // ✅ Import OtpFlow
+import OtpFlow from './components/OtpFlow';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -24,7 +24,6 @@ const CustomerLayout = () => {
   const [userMobile, setUserMobile] = useState(() => localStorage.getItem('fyntas_mobile') || '');
   const [userName, setUserName] = useState(() => localStorage.getItem('fyntas_name') || '');
 
-  // Login Modal State
   const [showLogin, setShowLogin] = useState(false);
 
   const showToast = (msg: string) => {
@@ -89,17 +88,14 @@ const CustomerLayout = () => {
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', maxWidth: '480px', margin: '0 auto', paddingBottom: '80px', background: '#f8f9fa', color: '#111111', minHeight: '100vh', position: 'relative' }}>
       
-      {/* Toast Popup */}
       {toast && (
         <div style={{ position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)', background: '#111111', color: '#fff', padding: '10px 20px', borderRadius: '20px', zIndex: 500, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
           {toast}
         </div>
       )}
 
-      {/* Drawer Overlay */}
       {isDrawerOpen && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>}
 
-      {/* Drawer */}
       <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ background: '#ffffff', padding: '30px 20px', textAlign: 'center', color: '#111111', borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#111111', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '35px', color: '#ffffff' }}>👤</div>
@@ -127,7 +123,6 @@ const CustomerLayout = () => {
         </div>
       </div>
 
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#ffffff', borderBottom: '1px solid #f3f4f6' }}>
         <div onClick={() => setIsDrawerOpen(true)} style={{ fontSize: '24px', cursor: 'pointer', color: '#111111', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ width: '24px', height: '2px', background: '#111111' }}></div>
@@ -138,16 +133,18 @@ const CustomerLayout = () => {
         <div style={{ fontSize: '20px', color: '#111111' }}>🔔</div>
       </div>
 
-      {/* Content Area */}
       <div style={{ padding: '0px' }}>
         {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
-        {activeTab === 'orders' && <CustomerOrders savedMobile={userMobile} isLoggedIn={isLoggedIn} />}
-        {activeTab === 'addresses' && <CustomerAddresses savedMobile={userMobile} isLoggedIn={isLoggedIn} />}
+        
+        {/* ✅ Props hata diye (Build error fix) */}
+        {activeTab === 'orders' && <CustomerOrders />}
+        {activeTab === 'addresses' && <CustomerAddresses />}
+
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
-        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} savedMobile={userMobile} isLoggedIn={isLoggedIn} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
+        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
         {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
         {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
@@ -155,7 +152,6 @@ const CustomerLayout = () => {
         {activeTab === 'refund' && <div style={{ padding: '20px' }}><p>Refund Policy</p></div>}
       </div>
 
-      {/* Bottom Navigation */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: '480px', margin: '0 auto', background: '#ffffff', display: 'flex', justifyContent: 'space-around', padding: '10px 0', borderTop: '1px solid #f3f4f6', zIndex: 100 }}>
         {tabs.map(tab => (
           <div key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', color: activeTab === tab.id ? '#111111' : '#9ca3af' }}>
@@ -165,7 +161,6 @@ const CustomerLayout = () => {
         ))}
       </div>
 
-      {/* Login Modal (No Prompt!) */}
       {showLogin && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowLogin(false)}>
           <div onClick={(e) => e.stopPropagation()}>
