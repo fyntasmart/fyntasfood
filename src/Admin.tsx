@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
+// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -29,6 +30,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [appPages, setAppPages] = useState<AppPage[]>([]);
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
+  
+  // ✅ Direct Logo Upload State
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -114,7 +117,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   useEffect(() => { fetchData(); const interval = setInterval(fetchData, 10000); return () => clearInterval(interval); }, []);
-
   useEffect(() => { const handleClickOutside = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpenOrderMenuId(null); }; document.addEventListener('mousedown', handleClickOutside); return () => document.removeEventListener('mousedown', handleClickOutside); }, []);
 
   const uploadImage = async (file: File) => {
@@ -163,38 +165,38 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData(); };
   const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); fetchData(); };
-
   const addCategory = async () => { if (!catName || !catShort) return alert('Category naam aur short code do!'); let imgUrl = ''; if (catImg) imgUrl = await uploadImage(catImg); await supabase.from('categories').insert({ name: catName, short_name: catShort, image_url: imgUrl }); setCatName(''); setCatShort(''); setCatImg(null); fetchData(); };
   const saveCategory = async () => { if (!selectedCategory) return; await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id); setEditingCat(false); setCatMenu(false); fetchData(); };
   const toggleCategoryActive = async (cat: Category) => { await supabase.from('categories').update({ is_active: !cat.is_active }).eq('id', cat.id); setSelectedCategory({ ...cat, is_active: !cat.is_active }); setCatMenu(false); fetchData(); };
   const deleteCategory = async (id: string) => { if (!confirm('Category delete karna hai?')) return; await supabase.from('categories').delete().eq('id', id); setIsCatModal(false); fetchData(); };
-
   const addBranch = async () => { if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!'); await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 }); setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); setNewBranchMaxKm('15'); fetchData(); };
   const saveBranch = async () => { if (!selectedBranch) return; await supabase.from('branches').update(selectedBranch).eq('id', selectedBranch.id); setEditingBranch(false); setBranchMenu(false); fetchData(); };
   const deleteBranch = async (id: string) => { if (!confirm('Branch delete karna hai?')) return; await supabase.from('branches').delete().eq('id', id); setIsBranchModal(false); fetchData(); };
   const toggleBranchActive = async (branch: Branch) => { await supabase.from('branches').update({ is_active: !branch.is_active }).eq('id', branch.id); setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData(); };
-
   const addDeliveryBoy = async () => { if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!'); await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress }); await supabase.from('registered_users').insert({ mobile: dbMobile, role: 'delivery_boy' }); setDbName(''); setDbMobile(''); setDbAadhar(''); setDbAddress(''); fetchData(); };
   const saveBoy = async () => { if (!selectedBoy) return; const { error } = await supabase.from('delivery_boys').update(selectedBoy).eq('id', selectedBoy.id); if (error) { alert('Update error: ' + error.message); return; } if (originalBoyMobile !== selectedBoy.mobile) { await supabase.from('registered_users').update({ mobile: selectedBoy.mobile }).eq('mobile', originalBoyMobile); } setEditingBoy(false); setBoyMenu(false); fetchData(); };
   const deleteBoy = async (id: string) => { if (!confirm('Delivery boy delete karna hai?')) return; await supabase.from('delivery_boys').delete().eq('id', id); setIsBoyModal(false); fetchData(); };
   const toggleBoyActive = async (boy: DeliveryBoy) => { await supabase.from('delivery_boys').update({ is_active: !boy.is_active }).eq('id', boy.id); setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData(); };
-
   const handleStatusChange = async (orderId: string, status: string) => { await supabase.from('orders').update({ status }).eq('id', orderId); fetchData(); };
   const deleteOrder = async (orderId: string) => { if (!confirm('Kya aap yeh order delete karna chahte hain?')) return; await supabase.from('order_items').delete().eq('order_id', orderId); await supabase.from('orders').delete().eq('id', orderId); setOpenOrderMenuId(null); fetchData(); };
   const printReceipt = (orderId: string, format: string) => { window.open(`/invoice/${orderId}?format=${format}`, '_blank'); };
   const assignDeliveryBoy = async (orderId: string, boyId: string) => { if (!boyId) return; await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId); setOpenOrderMenuId(null); fetchData(); };
-
   const addTier = async () => { const last = tiers[tiers.length - 1]; const min = last ? last.max_km : 0; const max = min + 2; const price = last ? last.price + 10 : 10; await supabase.from('delivery_tiers').insert({ min_km: min, max_km: max, price }); fetchData(); };
   const deleteTier = async (id: string) => { if (tiers.length <= 1) return alert('Ek tier toh hona chahiye!'); await supabase.from('delivery_tiers').delete().eq('id', id); fetchData(); };
-
   const addBanner = async () => { if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!'); let imgUrl = ''; if (bannerImg) imgUrl = await uploadImage(bannerImg); await supabase.from('banners').insert({ title: bannerTitle, image_url: imgUrl }); setBannerTitle(''); setBannerImg(null); fetchData(); };
   const toggleBannerActive = async (banner: Banner) => { await supabase.from('banners').update({ is_active: !banner.is_active }).eq('id', banner.id); fetchData(); };
   const deleteBanner = async (id: string) => { if (!confirm('Banner delete karna hai?')) return; await supabase.from('banners').delete().eq('id', id); fetchData(); };
-
   const handleSelectPage = (key: string) => { setSelectedPage(key); const page = appPages.find(p => p.page_key === key); setCurrentContent(page ? page.content : ''); };
   const saveContent = async () => { const { error } = await supabase.from('app_pages').upsert({ page_key: selectedPage, content: currentContent }, { onConflict: 'page_key' }); if (!error) { alert('Content saved successfully!'); fetchData(); } else { alert('Error: ' + error.message); } };
 
-  const saveInvoiceSettings = async () => { let logo = invoiceSettings.logo_url; if (logoFile) { const url = await uploadImage(logoFile); if (url) logo = url; } const updatedSettings = { ...invoiceSettings, logo_url: logo }; const { error } = await supabase.from('invoice_settings').upsert(updatedSettings); if (!error) { alert('Invoice Settings Saved!'); fetchData(); } else { alert('Error: ' + error.message); } };
+  // ✅ Updated Invoice Settings Saver with Direct Logo Upload
+  const saveInvoiceSettings = async () => {
+    let logo = invoiceSettings.logo_url;
+    if (logoFile) { const url = await uploadImage(logoFile); if (url) logo = url; }
+    const updatedSettings = { ...invoiceSettings, logo_url: logo };
+    const { error } = await supabase.from('invoice_settings').upsert(updatedSettings);
+    if (!error) { alert('Invoice Settings Saved!'); fetchData(); } else { alert('Error: ' + error.message); }
+  };
 
   const exportCustomers = () => { const header = ["Name", "Mobile Number"]; const rows = customers.map(c => [c.name || 'Unknown', c.mobile]); const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map(e => e.join(",")).join("\n"); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "customers_list.csv"); document.body.appendChild(link); link.click(); };
 
@@ -530,30 +532,37 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* ✅ FIXED INVOICE SETTINGS TAB */}
         {activeTab === 'invoice_settings' && (
           <div className="panel">
             <h3>Invoice Settings</h3>
             
+            {/* 1. Logo Upload (Direct Upload) */}
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ fontWeight: 'bold' }}>Company Logo</label>
+              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Company Logo</label>
               {invoiceSettings.logo_url && <img src={invoiceSettings.logo_url} alt="logo" style={{ maxHeight: '60px', display: 'block', marginBottom: '10px' }} />}
               <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
             </div>
 
+            {/* 2. Header (Company Name) */}
             <label>Header / Company Name</label>
             <input value={invoiceSettings.company_name || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, company_name: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
+            {/* 3. Address */}
             <label>Address</label>
             <input value={invoiceSettings.address || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, address: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
+            {/* 4. Welcome Note */}
             <label>Welcome Note</label>
-            <textarea value={invoiceSettings.welcome_note || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, welcome_note: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            <textarea value={invoiceSettings.welcome_note || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, welcome_note: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
+            {/* 5. Terms & Conditions */}
             <label>Terms & Conditions</label>
-            <textarea value={invoiceSettings.terms || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, terms: e.target.value })} rows={3} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            <textarea value={invoiceSettings.terms || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, terms: e.target.value })} rows={3} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
-            <label>Footer Text (Thank You)</label>
-            <input value={invoiceSettings.footer || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footer: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            {/* 6. Thank You Note (Footer) */}
+            <label>Thank You Note (Footer)</label>
+            <input value={invoiceSettings.footer || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footer: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
             <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={saveInvoiceSettings}>Save Settings</button>
           </div>
@@ -601,7 +610,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         )}
       </div>
 
-      {/* Modals - FULL CODE (No Placeholders) */}
+      {/* Modals - Full Code */}
       {isCatModal && (
         <div className="modal-scrim show" onClick={() => setIsCatModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
