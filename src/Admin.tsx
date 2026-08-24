@@ -29,9 +29,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [appPages, setAppPages] = useState<AppPage[]>([]);
+  
+  // Invoice Settings State - default 'FYNTAS' id ko khali rakho
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
   
-  // ✅ Direct Logo Upload State
+  // Direct Logo Upload State
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,7 +103,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       supabase.from('customers').select('*').order('created_at', { ascending: false }),
       supabase.from('banners').select('*').order('created_at', { ascending: false }),
       supabase.from('app_pages').select('*'),
-      supabase.from('invoice_settings').select('*').single()
+      // ✅ FIX: maybeSingle use karo taaki table khali hone par bhi error na aaye
+      supabase.from('invoice_settings').select('*').maybeSingle()
     ]);
     if (b.data) setBranches(b.data);
     if (s.data) setSettings(s.data);
@@ -113,6 +116,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
     if (pages.data && pages.data.length > 0) setAppPages(pages.data);
+    // ✅ FIX: invoiceSettings ka data aaye toh update karo
     if (inv.data) setInvoiceSettings({ ...invoiceSettings, ...inv.data });
   };
 
@@ -189,13 +193,18 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const handleSelectPage = (key: string) => { setSelectedPage(key); const page = appPages.find(p => p.page_key === key); setCurrentContent(page ? page.content : ''); };
   const saveContent = async () => { const { error } = await supabase.from('app_pages').upsert({ page_key: selectedPage, content: currentContent }, { onConflict: 'page_key' }); if (!error) { alert('Content saved successfully!'); fetchData(); } else { alert('Error: ' + error.message); } };
 
-  // ✅ Updated Invoice Settings Saver with Direct Logo Upload
+  // ✅ FIX: Invoice Settings Save (Empty id handle karo)
   const saveInvoiceSettings = async () => {
     let logo = invoiceSettings.logo_url;
     if (logoFile) { const url = await uploadImage(logoFile); if (url) logo = url; }
-    const updatedSettings = { ...invoiceSettings, logo_url: logo };
-    const { error } = await supabase.from('invoice_settings').upsert(updatedSettings);
-    if (!error) { alert('Invoice Settings Saved!'); fetchData(); } else { alert('Error: ' + error.message); }
+    
+    const newData = { ...invoiceSettings, logo_url: logo };
+    // Agar id empty hai toh usko delete karo (taaki upsert naya record bana sake)
+    if (!newData.id) delete newData.id;
+    
+    const { error } = await supabase.from('invoice_settings').upsert(newData);
+    if (!error) { alert('Invoice Settings Saved!'); fetchData(); }
+    else { alert('Error: ' + error.message); }
   };
 
   const exportCustomers = () => { const header = ["Name", "Mobile Number"]; const rows = customers.map(c => [c.name || 'Unknown', c.mobile]); const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map(e => e.join(",")).join("\n"); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "customers_list.csv"); document.body.appendChild(link); link.click(); };
@@ -532,35 +541,29 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* ✅ FIXED INVOICE SETTINGS TAB */}
+        {/* FIXED INVOICE SETTINGS TAB */}
         {activeTab === 'invoice_settings' && (
           <div className="panel">
             <h3>Invoice Settings</h3>
             
-            {/* 1. Logo Upload (Direct Upload) */}
             <div style={{ marginBottom: '15px' }}>
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Company Logo</label>
               {invoiceSettings.logo_url && <img src={invoiceSettings.logo_url} alt="logo" style={{ maxHeight: '60px', display: 'block', marginBottom: '10px' }} />}
               <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
             </div>
 
-            {/* 2. Header (Company Name) */}
             <label>Header / Company Name</label>
             <input value={invoiceSettings.company_name || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, company_name: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
-            {/* 3. Address */}
             <label>Address</label>
             <input value={invoiceSettings.address || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, address: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
-            {/* 4. Welcome Note */}
             <label>Welcome Note</label>
             <textarea value={invoiceSettings.welcome_note || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, welcome_note: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
-            {/* 5. Terms & Conditions */}
             <label>Terms & Conditions</label>
             <textarea value={invoiceSettings.terms || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, terms: e.target.value })} rows={3} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
-            {/* 6. Thank You Note (Footer) */}
             <label>Thank You Note (Footer)</label>
             <input value={invoiceSettings.footer || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footer: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px' }} />
 
@@ -610,7 +613,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         )}
       </div>
 
-      {/* Modals - Full Code */}
+      {/* Modals */}
       {isCatModal && (
         <div className="modal-scrim show" onClick={() => setIsCatModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
