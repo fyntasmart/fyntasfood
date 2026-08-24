@@ -6,6 +6,8 @@ import CustomerFavorites from './pages/CustomerFavorites';
 import CustomerCart from './pages/CustomerCart';
 import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
+// ✅ Import Orders page
+import CustomerOrders from './pages/CustomerOrders';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -13,7 +15,6 @@ const CustomerLayout = () => {
   const [cart, setCart] = useState<any[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
   
-  // Product Page State
   const [isProductPage, setIsProductPage] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
@@ -35,13 +36,11 @@ const CustomerLayout = () => {
     showToast('Item Added to Cart ✔️');
   };
 
-  // Product click par Full Page kholo
   const handleProductClick = (product: any) => {
     setSelectedProduct(product);
     setIsProductPage(true);
   };
 
-  // Back button
   const handleBack = () => {
     setIsProductPage(false);
     setSelectedProduct(null);
@@ -69,14 +68,9 @@ const CustomerLayout = () => {
     { id: 'refund', label: 'Refund Policy', icon: '💰' },
   ];
 
-  // 🔥 AGAR PRODUCT PAGE OPEN HAI TO POPUP NAHI, PURA PAGE DIKHEGA
   if (isProductPage && selectedProduct) {
     return (
-      <ProductPage 
-        product={selectedProduct} 
-        addToCart={addToCart} 
-        onBack={handleBack} 
-      />
+      <ProductPage product={selectedProduct} addToCart={addToCart} onBack={handleBack} />
     );
   }
 
@@ -123,14 +117,24 @@ const CustomerLayout = () => {
 
       {/* Content Area */}
       <div style={{ padding: '0px' }}>
-        {/* onProductClick = handleProductClick */}
         {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
-        {activeTab === 'profile' && <CustomerProfile />}
+        {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
         
+        {/* ✅ Orders Page Render */}
+        {activeTab === 'orders' && <CustomerOrders />}
+
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
         {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
+
+        {/* Drawer ke baaki pages */}
+        {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
+        {activeTab === 'addresses' && <div style={{ padding: '20px' }}><p>Manage Addresses</p></div>}
+        {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
+        {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
+        {activeTab === 'terms' && <div style={{ padding: '20px' }}><p>Terms & Conditions</p></div>}
+        {activeTab === 'refund' && <div style={{ padding: '20px' }}><p>Refund Policy</p></div>}
       </div>
 
       {/* Bottom Navigation */}
