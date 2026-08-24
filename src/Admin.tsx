@@ -28,7 +28,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [deliveryBoys, setDeliveryBoys] = useState<DeliveryBoy[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [appPages, setAppPages] = useState<AppPage[]>([]);
+  const [appPages, setAppPages] = useState<AppPage[]>([]); // Used in Content Tab
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
 
   // Order Management States
@@ -42,12 +42,18 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Product Edit States
   const [editingProductFull, setEditingProductFull] = useState<Product | null>(null);
-  const [selectedPage, setSelectedPage] = useState('about');
+  
+  // Content States
+  const [selectedPage, setSelectedPage] = useState('about'); // Used in Content Tab
   const [currentContent, setCurrentContent] = useState('');
 
+  // Banner States
   const [bannerTitle, setBannerTitle] = useState('');
-  const [bannerImg, setBannerImg] = useState<File | null>(null);
+  const [bannerImg, setBannerImg] = useState<File | null>(null); // Used in Banner Tab
+
+  // Product Form States
   const [prodName, setProdName] = useState('');
   const [prodSku, setProdSku] = useState('');
   const [prodCat, setProdCat] = useState('');
@@ -61,6 +67,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
+
+  // Category & Branch & Delivery Boy Form States
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
@@ -75,6 +83,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
 
+  // Modal States
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -121,7 +130,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Auto-Refresh
+    const interval = setInterval(fetchData, 10000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -143,7 +152,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // ---- Product Functions ----
+  // Product Functions
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name); setProdSku(product.sku || ''); setProdCat(product.category_id || '');
@@ -199,7 +208,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsProdModal(false); fetchData();
   };
 
-  // ---- Category Functions ----
+  // Category Functions
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -222,7 +231,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsCatModal(false); fetchData();
   };
 
-  // ---- Branch Functions ----
+  // Branch Functions
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
@@ -243,7 +252,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
-  // ---- Delivery Boy Functions ----
+  // Delivery Boy Functions
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
@@ -269,7 +278,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
-  // ---- Order Management ----
+  // Order Management Functions
   const handleStatusChange = async (orderId: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     fetchData();
@@ -289,24 +298,59 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setOpenOrderMenuId(null); fetchData();
   };
 
-  // ---- Pagination & Filter Logic ----
-  const filteredOrders = orders.filter(order => {
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer_mobile.includes(searchQuery) || order.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  // Tier Functions
+  const addTier = async () => {
+    const last = tiers[tiers.length - 1];
+    const min = last ? last.max_km : 0;
+    const max = min + 2;
+    const price = last ? last.price + 10 : 10;
+    await supabase.from('delivery_tiers').insert({ min_km: min, max_km: max, price });
+    fetchData();
+  };
+  const deleteTier = async (id: string) => {
+    if (tiers.length <= 1) return alert('Ek tier toh hona chahiye!');
+    await supabase.from('delivery_tiers').delete().eq('id', id);
+    fetchData();
+  };
 
-  // ---- Invoice Settings ----
+  // Banner Functions
+  const addBanner = async () => {
+    if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
+    let imgUrl = '';
+    if (bannerImg) imgUrl = await uploadImage(bannerImg);
+    await supabase.from('banners').insert({ title: bannerTitle, image_url: imgUrl });
+    setBannerTitle(''); setBannerImg(null); fetchData();
+  };
+  const toggleBannerActive = async (banner: Banner) => {
+    await supabase.from('banners').update({ is_active: !banner.is_active }).eq('id', banner.id);
+    fetchData();
+  };
+  const deleteBanner = async (id: string) => {
+    if (!confirm('Banner delete karna hai?')) return;
+    await supabase.from('banners').delete().eq('id', id);
+    fetchData();
+  };
+
+  // Content Functions
+  const handleSelectPage = (key: string) => {
+    setSelectedPage(key);
+    const page = appPages.find(p => p.page_key === key);
+    setCurrentContent(page ? page.content : '');
+  };
+  const saveContent = async () => {
+    const { error } = await supabase.from('app_pages').upsert(
+      { page_key: selectedPage, content: currentContent },
+      { onConflict: 'page_key' }
+    );
+    if (!error) { alert('Content saved successfully!'); fetchData(); }
+    else { alert('Error: ' + error.message); }
+  };
+
+  // Invoice Settings & Export
   const saveInvoiceSettings = async () => {
     await supabase.from('invoice_settings').upsert(invoiceSettings);
     alert('Invoice Settings Saved!'); fetchData();
   };
-
-  // ---- Export ----
   const exportCustomers = () => {
     const header = ["Name", "Mobile Number"];
     const rows = customers.map(c => [c.name || 'Unknown', c.mobile]);
@@ -318,6 +362,17 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     document.body.appendChild(link);
     link.click();
   };
+
+  // Pagination Logic
+  const filteredOrders = orders.filter(order => {
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer_mobile.includes(searchQuery) || order.id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
@@ -359,8 +414,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .dots-menu{position:absolute; top:60px; right:20px; min-width:150px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 10px 20px rgba(0,0,0,0.1); overflow:hidden; z-index:20; display:none;}
         .dots-menu.show{display:block;}
         .dots-menu button{width:100%; text-align:left; background:none; border:none; color:#111111; padding:10px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:8px;}
-        .dots-menu button:hover{background:#f3f4f6;}
-        .dots-menu button.danger{color:#dc2626;}
+        .dots-menu button:hover{background:#f3f4f6;} .dots-menu button.danger{color:#dc2626;}
         .modal-body{padding:18px 20px;}
         .detail-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:14px;}
         .detail-row .dl{color:#6b7280;} .detail-row .dv{font-weight:600;}
@@ -369,7 +423,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .order-table { width: 100%; border-collapse: collapse; }
         .order-table th { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; font-weight: 600; }
         .order-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; vertical-align: middle; }
-        .order-table tr:hover { background: #f8f9fa; }
         .menu-wrapper { position: relative; display: inline-block; }
       `}</style>
 
@@ -384,6 +437,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
+        {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -396,6 +450,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Orders */}
         {activeTab === 'orders' && (
           <div className="panel">
             <div className="table-controls">
@@ -410,9 +465,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             </div>
 
             <table className="order-table">
-              <thead>
-                <tr><th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr>
-              </thead>
+              <thead><tr><th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
               <tbody>
                 {currentOrders.length === 0 ? <tr><td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>No orders found</td></tr> : (
                   currentOrders.map(order => (
@@ -455,7 +508,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 )}
               </tbody>
             </table>
-
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
               <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage > 1 && paginate(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
               <span style={{ fontSize: '13px' }}>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
@@ -464,6 +516,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Products */}
         {activeTab === 'products' && (
           <div className="panel">
             {editingProductFull ? (
@@ -476,36 +529,21 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
                   <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
-                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}>
-                    <option value="">Select Category</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}><option value="">Select Category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                   <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
                   <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
-                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
-                    {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                  </select>
+                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>{UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select>
                   <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                      <option value="none">No Discount</option>
-                      <option value="percent">Percentage (%)</option>
-                      <option value="amount">Flat Amount (₹)</option>
-                    </select>
+                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}><option value="none">No Discount</option><option value="percent">Percentage (%)</option><option value="amount">Flat Amount (₹)</option></select>
                     {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
                     {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
                   </div>
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image {editingProductFull.image_url && <span style={{ color: 'green' }}>(Current Has Image)</span>}</label>
-                    <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3) {editingProductFull.image_2 && <span style={{ color: 'green' }}>(Current Has Gallery)</span>}</label>
-                    <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
-                  </div>
+                  <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image {editingProductFull.image_url && <span style={{ color: 'green' }}>(Current Has Image)</span>}</label><input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} /></div>
+                  <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3) {editingProductFull.image_2 && <span style={{ color: 'green' }}>(Current Has Gallery)</span>}</label><input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} /></div>
                 </div>
                 <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Update Product</button>
               </>
@@ -515,36 +553,21 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
                   <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
-                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}>
-                    <option value="">Select Category</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}><option value="">Select Category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
                   <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
                   <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
-                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
-                    {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                  </select>
+                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>{UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select>
                   <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                      <option value="none">No Discount</option>
-                      <option value="percent">Percentage (%)</option>
-                      <option value="amount">Flat Amount (₹)</option>
-                    </select>
+                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}><option value="none">No Discount</option><option value="percent">Percentage (%)</option><option value="amount">Flat Amount (₹)</option></select>
                     {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
                     {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
                   </div>
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image</label>
-                    <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3)</label>
-                    <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
-                  </div>
+                  <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image</label><input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} /></div>
+                  <div><label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3)</label><input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} /></div>
                 </div>
                 <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Add Product</button>
               </>
@@ -565,6 +588,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Categories */}
         {activeTab === 'categories' && (
           <div className="panel">
             <h3>All Categories</h3>
@@ -590,6 +614,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Customers */}
         {activeTab === 'customers' && (
           <div className="panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -607,6 +632,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Delivery Boys */}
         {activeTab === 'delivery' && (
           <div className="panel">
             <h3>Add Delivery Boy</h3>
@@ -622,6 +648,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Branches */}
         {activeTab === 'branches' && (
           <div className="panel">
             <h3>Add Branch (With Location & Max KM)</h3>
@@ -639,6 +666,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Charges */}
         {activeTab === 'charges' && (
           <div className="panel">
             <h3>Delivery Charge Settings</h3>
@@ -660,6 +688,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Banners */}
         {activeTab === 'banners' && (
           <div className="panel">
             <h3>Add New Banner</h3>
@@ -677,10 +706,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                     <td><img src={banner.image_url} alt="banner" style={{ width: '80px', height: '40px', objectFit: 'cover', borderRadius: '5px' }} /></td>
                     <td>{banner.title}</td>
                     <td><span className={`status-pill ${banner.is_active ? 'active' : 'inactive'}`}>{banner.is_active ? 'Active' : 'Inactive'}</span></td>
-                    <td>
-                      <button className="btn btn-green" onClick={() => toggleBannerActive(banner)}>Toggle</button>
-                      <button className="btn btn-red" style={{ marginLeft: '5px' }} onClick={() => deleteBanner(banner.id)}>Delete</button>
-                    </td>
+                    <td><button className="btn btn-green" onClick={() => toggleBannerActive(banner)}>Toggle</button><button className="btn btn-red" style={{ marginLeft: '5px' }} onClick={() => deleteBanner(banner.id)}>Delete</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -688,6 +714,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Invoice Settings */}
         {activeTab === 'invoice_settings' && (
           <div className="panel">
             <h3>Invoice Settings</h3>
@@ -701,6 +728,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Profile */}
         {activeTab === 'profile' && (
           <div className="panel">
             <h3>My Profile (Admin)</h3>
@@ -713,6 +741,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Policies */}
         {activeTab === 'policies' && (
           <div className="panel">
             <h3>Policies</h3>
@@ -723,6 +752,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
+        {/* Content */}
         {activeTab === 'content' && (
           <div className="panel">
             <h3>Manage App Content</h3>
@@ -791,7 +821,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             <div className="modal-body">
               <div className="detail-row"><span className="dl">SKU</span><span className="dv">{selectedProduct?.sku}</span></div>
               <div className="detail-row"><span className="dl">Price</span><span className="dv">₹{selectedProduct?.price}</span></div>
-              <div className="detail-row"><span className="dl">Unit</span><span className="dv">{selectedProduct?.unit || 'Pcs'}</span></div>
               <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedProduct?.is_active ? 'Active' : 'Inactive'}</span></div>
             </div>
           </div>
@@ -880,14 +909,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       )}
 
-      {/* Order View Modal */}
       {selectedOrderForView && (
         <div className="modal-scrim show" onClick={() => setSelectedOrderForView(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Order Details</h3>
-              <div className="modal-close" onClick={() => setSelectedOrderForView(null)}>✕</div>
-            </div>
+            <div className="modal-head"><h3>Order Details</h3><div className="modal-close" onClick={() => setSelectedOrderForView(null)}>✕</div></div>
             <div className="modal-body">
               <div className="detail-row"><span className="dl">Order ID</span><span className="dv">ORD{selectedOrderForView.id.slice(0, 6).toUpperCase()}</span></div>
               <div className="detail-row"><span className="dl">Customer</span><span className="dv">{selectedOrderForView.customer_name}</span></div>
