@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
@@ -8,20 +8,24 @@ import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerAddresses from './pages/CustomerAddresses';
+import { supabase } from './supabaseClient';
+import OtpFlow from './components/OtpFlow'; // ✅ Import OtpFlow
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
   const [isCheckout, setIsCheckout] = useState(false);
-  
   const [isProductPage, setIsProductPage] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-
   const [toast, setToast] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userMobile, setUserMobile] = useState('');
-  const [userName, setUserName] = useState('');
+
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('fyntas_mobile') ? true : false);
+  const [userMobile, setUserMobile] = useState(() => localStorage.getItem('fyntas_mobile') || '');
+  const [userName, setUserName] = useState(() => localStorage.getItem('fyntas_name') || '');
+
+  // Login Modal State
+  const [showLogin, setShowLogin] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -31,9 +35,7 @@ const CustomerLayout = () => {
   const addToCart = (product: any) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      }
+      if (existing) return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
       return [...prev, { ...product, qty: 1 }];
     });
     showToast('Item Added to Cart ✔️');
@@ -47,6 +49,15 @@ const CustomerLayout = () => {
   const handleBack = () => {
     setIsProductPage(false);
     setSelectedProduct(null);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('fyntas_mobile');
+    localStorage.removeItem('fyntas_name');
+    setIsLoggedIn(false);
+    setUserMobile('');
+    setUserName('');
+    setShowLogin(false);
   };
 
   const tabs = [
@@ -72,9 +83,7 @@ const CustomerLayout = () => {
   ];
 
   if (isProductPage && selectedProduct) {
-    return (
-      <ProductPage product={selectedProduct} addToCart={addToCart} onBack={handleBack} />
-    );
+    return <ProductPage product={selectedProduct} addToCart={addToCart} onBack={handleBack} />;
   }
 
   return (
@@ -90,36 +99,20 @@ const CustomerLayout = () => {
       {/* Drawer Overlay */}
       {isDrawerOpen && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }} onClick={() => setIsDrawerOpen(false)}></div>}
 
-      {/* Drawer - White/Black Theme */}
+      {/* Drawer */}
       <div style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '280px', background: '#ffffff', zIndex: 300, transform: isDrawerOpen ? 'translateX(0)' : 'translateX(-100%)', transition: 'transform 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ background: '#ffffff', padding: '30px 20px', textAlign: 'center', color: '#111111', borderBottom: '1px solid #f3f4f6' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#111111', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '35px', color: '#ffffff' }}>👤</div>
           {isLoggedIn ? (
             <>
-              <h3 style={{ margin: '0', fontWeight: 'bold' }}>{userName || userMobile}</h3>
-              <button 
-                onClick={() => { setIsLoggedIn(false); setUserMobile(''); setUserName(''); }}
-                style={{ background: '#111111', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '5px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}
-              >Logout</button>
+              <h3 style={{ margin: '0', fontWeight: 'bold', color: '#111111' }}>{userName || userMobile}</h3>
+              <button onClick={handleLogout} style={{ background: '#111111', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '5px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
             </>
           ) : (
             <>
-              <h3 style={{ margin: '0', fontWeight: 'bold' }}>Guest User</h3>
+              <h3 style={{ margin: '0', fontWeight: 'bold', color: '#111111' }}>Guest User</h3>
               <p style={{ margin: '5px 0 0', fontSize: '14px', color: '#6b7280' }}>Sign in to get started</p>
-              <button 
-                onClick={() => {
-                  const enteredMobile = prompt('Apna mobile number daalo:');
-                  if (enteredMobile && enteredMobile.length === 10) {
-                    setUserMobile(enteredMobile);
-                    setUserName('User');
-                    setIsLoggedIn(true);
-                    alert('Login successful!');
-                  } else {
-                    alert('Sahi mobile number daalo!');
-                  }
-                }}
-                style={{ background: '#111111', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '5px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}
-              >Login</button>
+              <button onClick={() => setShowLogin(true)} style={{ background: '#111111', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '5px', marginTop: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Login</button>
             </>
           )}
         </div>
@@ -151,14 +144,10 @@ const CustomerLayout = () => {
         {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
-        
-        {activeTab === 'orders' && <CustomerOrders />}
-        {activeTab === 'addresses' && <CustomerAddresses />}
-
+        {activeTab === 'orders' && <CustomerOrders savedMobile={userMobile} isLoggedIn={isLoggedIn} />}
+        {activeTab === 'addresses' && <CustomerAddresses savedMobile={userMobile} isLoggedIn={isLoggedIn} />}
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
-        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
-
-        {/* Placeholders */}
+        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} savedMobile={userMobile} isLoggedIn={isLoggedIn} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
         {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
         {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
@@ -166,7 +155,7 @@ const CustomerLayout = () => {
         {activeTab === 'refund' && <div style={{ padding: '20px' }}><p>Refund Policy</p></div>}
       </div>
 
-      {/* Bottom Navigation - White/Black Theme */}
+      {/* Bottom Navigation */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, maxWidth: '480px', margin: '0 auto', background: '#ffffff', display: 'flex', justifyContent: 'space-around', padding: '10px 0', borderTop: '1px solid #f3f4f6', zIndex: 100 }}>
         {tabs.map(tab => (
           <div key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', color: activeTab === tab.id ? '#111111' : '#9ca3af' }}>
@@ -175,6 +164,26 @@ const CustomerLayout = () => {
           </div>
         ))}
       </div>
+
+      {/* Login Modal (No Prompt!) */}
+      {showLogin && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowLogin(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <OtpFlow 
+              theme="black" 
+              requiresName={true} 
+              onLogin={(user) => {
+                localStorage.setItem('fyntas_mobile', user.mobile);
+                if (user.name) localStorage.setItem('fyntas_name', user.name);
+                setUserMobile(user.mobile);
+                setUserName(user.name || 'User');
+                setIsLoggedIn(true);
+                setShowLogin(false);
+              }} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
