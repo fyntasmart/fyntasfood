@@ -10,7 +10,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isOtpVerified, setIsOtpVerified] = useState(false);
 
   const [branch, setBranch] = useState<any>(null);
   const [branches, setBranches] = useState<any[]>([]);
@@ -48,7 +47,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
     setLoading(true); setError('');
 
     const { error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
-    if (error) setError('OTP send nahi hua. SMS gateway check karo.');
+    if (error) setError('OTP send nahi hua.');
     else { setStep(2); alert('OTP bhej diya gaya hai!'); }
     setLoading(false);
   };
@@ -57,7 +56,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
     setLoading(true); setError('');
     const { data, error } = await supabase.functions.invoke('verify-otp', { body: { mobile, code: otp } });
     if (error || !data?.success) setError('Galat OTP! Dobara try karo.');
-    else { setIsOtpVerified(true); setStep(3); }
+    else { setStep(3); }
     setLoading(false);
   };
 
@@ -70,7 +69,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
     setLoading(true);
 
     try {
-      // Customer ko customers table mein save karo
       await supabase.from('customers').upsert({ mobile, name }, { onConflict: 'mobile' });
 
       const orderData = {
@@ -125,17 +123,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
       </div>
 
       <div style={{ padding: '15px' }}>
-        
-        {/* Step 1: Mobile */}
         {step === 1 && (
           <div style={{ textAlign: 'center', marginTop: '50px' }}>
             <h3 style={{ color: '#111827' }}>Login / Verify</h3>
             <p style={{ color: '#666' }}>Order karne ke liye apna mobile number daalo</p>
-            <input
-              type="text" placeholder="Mobile Number" value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }}
-            />
+            <input type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             {error && <p style={{ color: 'red' }}>{error}</p>}
             <button onClick={sendOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               {loading ? 'Sending...' : 'Send OTP'}
@@ -143,37 +135,26 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
           </div>
         )}
 
-        {/* Step 2: OTP */}
         {step === 2 && (
           <div style={{ textAlign: 'center', marginTop: '50px' }}>
             <h3 style={{ color: '#111827' }}>Enter OTP</h3>
             <p style={{ color: '#666' }}>Mobile {mobile} par bheja gaya OTP daalo</p>
-            <input
-              type="text" placeholder="4-digit OTP" value={otp}
-              onChange={(e) => setOtp(e.target.value)} maxLength={4}
-              style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px', textAlign: 'center', fontSize: '20px' }}
-            />
+            <input type="text" placeholder="4-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={4} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px', textAlign: 'center', fontSize: '20px' }} />
             {error && <p style={{ color: 'red' }}>{error}</p>}
             <button onClick={verifyOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>
-            <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#666', marginTop: '10px', cursor: 'pointer' }}>
-              Change Number
-            </button>
+            <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#666', marginTop: '10px', cursor: 'pointer' }}>Change Number</button>
           </div>
         )}
 
-        {/* Step 3: Details & Place Order */}
         {step === 3 && (
           <>
             <p style={{ color: '#059669', fontWeight: 'bold', marginBottom: '15px' }}>✅ Mobile Verified: {mobile}</p>
             <h3 style={{ color: '#111827', marginBottom: '10px' }}>Select Branch</h3>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px' }}>
               {branches.map((b: any) => (
-                <button key={b.id} onClick={() => calculateCharge(b)} style={{
-                  padding: '10px 15px', border: branch?.id === b.id ? '2px solid #1e40af' : '1px solid #d1d5db',
-                  borderRadius: '8px', cursor: 'pointer', background: branch?.id === b.id ? '#dbeafe' : '#ffffff', color: '#111827', fontWeight: 'bold'
-                }}>{b.name}</button>
+                <button key={b.id} onClick={() => calculateCharge(b)} style={{ padding: '10px 15px', border: branch?.id === b.id ? '2px solid #1e40af' : '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', background: branch?.id === b.id ? '#dbeafe' : '#ffffff', color: '#111827', fontWeight: 'bold' }}>{b.name}</button>
               ))}
             </div>
 
@@ -203,7 +184,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
         )}
       </div>
 
-      {/* UPI QR Modal (Banner removed) */}
       {showUpiModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowUpiModal(false)}>
           <div style={{ background: '#fff', borderRadius: '15px', padding: '20px', maxWidth: '350px', width: '100%', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
