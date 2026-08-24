@@ -31,6 +31,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', company_name: 'FYNTAS', logo_url: '', address: 'Partawal Chowk, Maharajganj Road, Maharajganj, UP, PIN: 273301', welcome_note: '', terms: '', footer: '' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
+  // Products Filtering State
   const [productSearch, setProductSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -80,7 +81,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingCat, setEditingCat] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProdModal, setIsProdModal] = useState(false);
+  
+  // ✅ FIX: prodMenu ko string | null define kiya
   const [prodMenu, setProdMenu] = useState<string | null>(null);
+
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isBranchModal, setIsBranchModal] = useState(false);
   const [branchMenu, setBranchMenu] = useState(false);
@@ -165,8 +169,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     handleCancelEditProduct(); fetchData();
   };
 
-  const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData(); };
-  const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); fetchData(); };
+  const toggleProductActive = async (prod: Product) => { await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id); setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(null); fetchData(); };
+  const deleteProduct = async (id: string) => { if (!confirm('Product delete karna hai?')) return; await supabase.from('products').delete().eq('id', id); setIsProdModal(false); setProdMenu(null); fetchData(); };
 
   const addCategory = async () => { if (!catName || !catShort) return alert('Category naam aur short code do!'); let imgUrl = ''; if (catImg) imgUrl = await uploadImage(catImg); await supabase.from('categories').insert({ name: catName, short_name: catShort, image_url: imgUrl }); setCatName(''); setCatShort(''); setCatImg(null); fetchData(); };
   const saveCategory = async () => { if (!selectedCategory) return; await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id); setEditingCat(false); setCatMenu(false); fetchData(); };
@@ -220,10 +224,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = (p.name || '').toLowerCase().includes(productSearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(productSearch.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredProducts = products.filter(p => { const matchesSearch = (p.name || '').toLowerCase().includes(productSearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(productSearch.toLowerCase()); return matchesSearch; });
   const totalProducts = products.length;
   const activeProducts = products.filter(p => p.is_active).length;
   const inactiveProducts = products.filter(p => !p.is_active).length;
@@ -312,7 +313,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* ORDERS TAB - FULL CODE YAHAN HAI (Comment hata diya) */}
         {activeTab === 'orders' && (
           <div className="panel">
             <div className="table-controls">
