@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react'; // ✅ useEffect hata diya
 import { supabase } from '../supabaseClient';
 
 interface OtpFlowProps {
@@ -8,19 +8,17 @@ interface OtpFlowProps {
 }
 
 export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) {
-  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP, 3: Name
+  const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [spin, setSpin] = useState(false);
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const isGreen = theme === 'green';
-  
   const styles = {
     container: {
       background: isGreen ? '#0b2e22' : '#ffffff',
@@ -71,12 +69,11 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
     if (mobile.length !== 10) return setError('Sahi 10-digit number daalo!');
     setLoading(true); setError('');
     
-    // Call real Supabase function
     const { error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
     
     if (error) setError('OTP error: ' + error.message);
     else {
-      setStep(2); // Popup nahi, seedha OTP page
+      setStep(2);
       setTimeout(() => inputsRef.current[0]?.focus(), 100);
     }
     setLoading(false);
@@ -87,7 +84,6 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
     if (code.length !== 4) return setError('4 digit OTP daalo!');
     setLoading(true); setError('');
 
-    // Call real Supabase function
     const { data, error } = await supabase.functions.invoke('verify-otp', { body: { mobile, code } });
     
     if (error || !data?.success) {
@@ -95,20 +91,15 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
       setOtp(['', '', '', '']);
       inputsRef.current[0]?.focus();
     } else {
-      // OTP Verified -> Success Animation
-      setSpin(true);
-      setTimeout(() => setIsSuccess(true), 1500);
-
+      setIsSuccess(true);
       setTimeout(() => {
-        // Agar Customer hai aur Name required hai
         if (requiresName && data.role === 'customer') {
           setStep(3);
-          setSpin(false);
+          setIsSuccess(false); // Name step ke liye success animation hatao
         } else {
-          // Admin/Delivery Boy -> Direct Login
           onLogin({ mobile });
         }
-      }, 2200);
+      }, 1500);
     }
     setLoading(false);
   };
