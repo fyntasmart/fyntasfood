@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import OtpFlow from '../components/OtpFlow';
 
 const DeliveryBoyDashboard = () => {
-  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP
+  const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
@@ -10,11 +11,9 @@ const DeliveryBoyDashboard = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [boyId, setBoyId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, orders, earnings, profile
-  
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // Green Theme CSS (Reference se exact)
   const styles = `
     :root{
       --green-900:#0b2e22; --green-800:#0f3d2c; --green-700:#155e3e; --green-600:#1a7a4c;
@@ -62,35 +61,9 @@ const DeliveryBoyDashboard = () => {
     .sf-accept{flex:1; background:linear-gradient(135deg, var(--green-500), var(--green-700)); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
     .sf-decline{flex:1; background:#fdecec; color:#dc2626; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
     .login-wrap{max-width:400px; margin:50px auto; text-align:center; padding:20px; background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1);}
-    .login-input{width:100%; padding:12px; margin-bottom:10px; border:1px solid var(--line); border-radius:8px;}
-    .login-btn{width:100%; padding:15px; background:var(--green-600); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;}
   `;
 
-  // Login Logic (Popup Alert removed)
-  const sendOtp = async () => {
-    if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
-    setLoading(true); setError('');
-    const { data, error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
-    
-    // ✅ POPUP HATA DIYA - Seedha OTP Step par le jaao
-    if (error) setError('OTP error: ' + (data?.error || error.message));
-    else setStep(2); 
-    
-    setLoading(false);
-  };
-
-  const verifyOtp = async () => {
-    setLoading(true); setError('');
-    const { data, error } = await supabase.functions.invoke('verify-otp', { body: { mobile, code: otp } });
-    if (error || !data?.success) setError('Galat OTP!');
-    else if (data.role !== 'delivery_boy') setError('Yeh number Delivery Boy ke liye register nahi hai!');
-    else {
-      const { data: boyData } = await supabase.from('delivery_boys').select('*').eq('mobile', mobile).single();
-      if (boyData) { setBoyId(boyData.id); setIsLoggedIn(true); fetchOrders(boyData.id); }
-    }
-    setLoading(false);
-  };
-
+  // Ye sab purana logic hata diya, ab OtpFlow use hoga
   const fetchOrders = async (id: string) => {
     const { data } = await supabase.from('orders').select('*').eq('delivery_boy_id', id).order('created_at', { ascending: false });
     if (data) setOrders(data);
@@ -100,33 +73,26 @@ const DeliveryBoyDashboard = () => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     if (boyId) fetchOrders(boyId);
     setSelectedOrder(null);
-    // Updated to no alert to keep it clean, just refresh
   };
 
+  // Agar logged in nahi hai, toh OtpFlow dikhao (Green theme)
   if (!isLoggedIn) {
     return (
       <div style={{ background: '#0b2e22', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <style>{styles}</style>
-        <div className="login-wrap">
-          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🛵</div>
-          <h2 style={{ color: 'var(--green-700)' }}>Delivery Boy Login</h2>
-          {step === 1 ? (
-            <>
-              <p style={{ color: 'var(--sub)' }}>Registered mobile number daalo</p>
-              <input className="login-input" type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-              {error && <p style={{ color: 'red' }}>{error}</p>}
-              <button className="login-btn" onClick={sendOtp} disabled={loading}>{loading ? 'Sending...' : 'Send OTP'}</button>
-            </>
-          ) : (
-            <>
-              <p style={{ color: 'var(--sub)' }}>OTP daalo</p>
-              <input className="login-input" type="text" placeholder="4-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={4} />
-              {error && <p style={{ color: 'red' }}>{error}</p>}
-              <button className="login-btn" onClick={verifyOtp} disabled={loading}>{loading ? 'Verifying...' : 'Verify OTP'}</button>
-              <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--sub)', marginTop: '10px', cursor: 'pointer' }}>Change Number</button>
-            </>
-          )}
-        </div>
+        <OtpFlow 
+          theme="green" 
+          requiresName={false} 
+          onLogin={async (user) => {
+            // Login success -> fetch delivery boy data
+            const { data: boyData } = await supabase.from('delivery_boys').select('*').eq('mobile', user.mobile).single();
+            if (boyData) {
+              setBoyId(boyData.id);
+              setIsLoggedIn(true);
+              fetchOrders(boyData.id);
+            }
+          }} 
+        />
       </div>
     );
   }
@@ -152,7 +118,7 @@ const DeliveryBoyDashboard = () => {
           <div className="db-profile">
             <div className="db-avatar">🧑‍✈️</div>
             <div style={{ flex: 1 }}>
-              <div className="db-prof-name">+91 {mobile}</div>
+              <div className="db-prof-name">+91 {mobile || "Delivery Boy"}</div>
               <div className="db-prof-sub">Online • Delivering Happiness</div>
             </div>
             <div className="db-status"><div className="db-dot"></div>Online</div>
