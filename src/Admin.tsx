@@ -7,7 +7,7 @@ interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; category_id?: string; image_url?: string; image_2?: string; image_3?: string; image_4?: string; }
-interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; payment_method?: string; payment_status?: string; }
+interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; payment_method: string; payment_status: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
@@ -31,11 +31,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [appPages, setAppPages] = useState<AppPage[]>([]);
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
 
+  // Order Management States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
+  // Modal & Menu States
   const [selectedOrderForView, setSelectedOrderForView] = useState<Order | null>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -119,7 +121,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(fetchData, 10000); // Auto-Refresh
     return () => clearInterval(interval);
   }, []);
 
@@ -151,14 +153,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setGstEnabled(product.gst_enabled); setGstRate(product.gst_rate);
     setMainImage(null); setGalleryImages([]); setIsProdModal(false);
   };
-
   const handleCancelEditProduct = () => {
     setEditingProductFull(null);
     setProdName(''); setProdSku(''); setProdCat(''); setProdPrice(''); setProdStock('');
     setProdUnit('Pcs'); setProdDesc(''); setDiscountType('none'); setDiscountValue('');
     setGstEnabled(false); setGstRate(0); setMainImage(null); setGalleryImages([]);
   };
-
   const addOrUpdateProduct = async () => {
     if (!prodName || !prodCat || !prodPrice) return alert('Product name, category aur price do!');
     let mainImageUrl = editingProductFull?.image_url || '';
@@ -189,12 +189,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     }
     handleCancelEditProduct(); fetchData();
   };
-
   const toggleProductActive = async (prod: Product) => {
     await supabase.from('products').update({ is_active: !prod.is_active }).eq('id', prod.id);
     setSelectedProduct({ ...prod, is_active: !prod.is_active }); setProdMenu(false); fetchData();
   };
-
   const deleteProduct = async (id: string) => {
     if (!confirm('Product delete karna hai?')) return;
     await supabase.from('products').delete().eq('id', id);
@@ -291,12 +289,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setOpenOrderMenuId(null); fetchData();
   };
 
-  // ---- Pagination ----
+  // ---- Pagination & Filter Logic ----
   const filteredOrders = orders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          order.customer_mobile.includes(searchQuery) ||
-                          order.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer_mobile.includes(searchQuery) || order.id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
   const indexOfLastOrder = currentPage * ordersPerPage;
@@ -310,6 +306,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     alert('Invoice Settings Saved!'); fetchData();
   };
 
+  // ---- Export ----
   const exportCustomers = () => {
     const header = ["Name", "Mobile Number"];
     const rows = customers.map(c => [c.name || 'Unknown', c.mobile]);
@@ -350,8 +347,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .panel { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         input, select, textarea { background: #ffffff; border: 1px solid #e5e7eb; color: #111111; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
         .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
-        .btn-black { background: #111111; } .btn-green { background: #059669; }
-        .btn-red { background: #dc2626; } .btn-blue { background: #2563eb; }
+        .btn-black { background: #111111; } .btn-green { background: #059669; } .btn-red { background: #dc2626; } .btn-blue { background: #2563eb; }
         .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
         .active { background: #d1fae5; color: #065f46; } .inactive { background: #fee2e2; color: #991b1b; }
         .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:300; padding:20px;}
@@ -415,10 +411,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
             <table className="order-table">
               <thead>
-                <tr>
-                  <th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th>
-                  <th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th>
-                </tr>
+                <tr><th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {currentOrders.length === 0 ? <tr><td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>No orders found</td></tr> : (
@@ -556,7 +549,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                 <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Add Product</button>
               </>
             )}
-
             <h3 style={{ marginTop: '20px' }}>All Products</h3>
             <table>
               <thead><tr><th>Name</th><th>SKU</th><th>Unit</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
@@ -751,9 +743,146 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         )}
       </div>
 
-      {/* View Order Details Modal */}
+      {/* Modals */}
+      {isCatModal && (
+        <div className="modal-scrim show" onClick={() => setIsCatModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedCategory?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setCatMenu(!catMenu)}>⋮</div>
+                <div className={`dots-menu ${catMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingCat(true); setCatMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleCategoryActive(selectedCategory!)}>{selectedCategory?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteCategory(selectedCategory!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsCatModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingCat ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedCategory!.name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Short</span><input value={selectedCategory!.short_name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, short_name: e.target.value })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingCat(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveCategory}>Save</button>
+                  </div>
+                </div>
+              ) : <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedCategory?.is_active ? 'Active' : 'Inactive'}</span></div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isProdModal && (
+        <div className="modal-scrim show" onClick={() => setIsProdModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedProduct?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setProdMenu(!prodMenu)}>⋮</div>
+                <div className={`dots-menu ${prodMenu ? 'show' : ''}`}>
+                  <button onClick={() => { handleStartEditProduct(selectedProduct!); }}>✏️ Edit (Full Page)</button>
+                  <button onClick={() => toggleProductActive(selectedProduct!)}>{selectedProduct?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteProduct(selectedProduct!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsProdModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              <div className="detail-row"><span className="dl">SKU</span><span className="dv">{selectedProduct?.sku}</span></div>
+              <div className="detail-row"><span className="dl">Price</span><span className="dv">₹{selectedProduct?.price}</span></div>
+              <div className="detail-row"><span className="dl">Unit</span><span className="dv">{selectedProduct?.unit || 'Pcs'}</span></div>
+              <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedProduct?.is_active ? 'Active' : 'Inactive'}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBranchModal && (
+        <div className="modal-scrim show" onClick={() => setIsBranchModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedBranch?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setBranchMenu(!branchMenu)}>⋮</div>
+                <div className={`dots-menu ${branchMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingBranch(true); setBranchMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleBranchActive(selectedBranch!)}>{selectedBranch?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteBranch(selectedBranch!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsBranchModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingBranch ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedBranch!.name} onChange={(e) => setSelectedBranch({ ...selectedBranch!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Lat</span><input type="number" value={selectedBranch!.lat} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lat: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Lng</span><input type="number" value={selectedBranch!.lng} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lng: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Range (KM)</span><input type="number" value={selectedBranch!.delivery_range_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, delivery_range_km: parseFloat(e.target.value) })} /></div>
+                  <div className="detail-row"><span className="dl">Max Delivery (KM)</span><input type="number" value={selectedBranch!.max_delivery_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, max_delivery_km: parseFloat(e.target.value) })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingBranch(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveBranch}>Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBranch?.address || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Lat</span><span className="dv">{selectedBranch?.lat}</span></div>
+                  <div className="detail-row"><span className="dl">Lng</span><span className="dv">{selectedBranch?.lng}</span></div>
+                  <div className="detail-row"><span className="dl">Range</span><span className="dv">{selectedBranch?.delivery_range_km} KM</span></div>
+                  <div className="detail-row"><span className="dl">Max</span><span className="dv">{selectedBranch?.max_delivery_km} KM</span></div>
+                  <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBranch?.is_active ? 'Active' : 'Inactive'}</span></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBoyModal && (
+        <div className="modal-scrim show" onClick={() => setIsBoyModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head"><h3>{selectedBoy?.name}</h3>
+              <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                <div className="dots-btn" onClick={() => setBoyMenu(!boyMenu)}>⋮</div>
+                <div className={`dots-menu ${boyMenu ? 'show' : ''}`}>
+                  <button onClick={() => { setEditingBoy(true); setBoyMenu(false); }}>✏️ Edit</button>
+                  <button onClick={() => toggleBoyActive(selectedBoy!)}>{selectedBoy?.is_active ? 'Deactivate' : 'Activate'}</button>
+                  <button className="danger" onClick={() => deleteBoy(selectedBoy!.id)}>Delete</button>
+                </div>
+              </div>
+              <div className="modal-close" onClick={() => setIsBoyModal(false)}>✕</div>
+            </div>
+            <div className="modal-body">
+              {editingBoy ? (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><input value={selectedBoy!.name} onChange={(e) => setSelectedBoy({ ...selectedBoy!, name: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Mobile</span><input value={selectedBoy!.mobile} onChange={(e) => setSelectedBoy({ ...selectedBoy!, mobile: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Aadhar</span><input value={selectedBoy!.aadhar || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, aadhar: e.target.value })} /></div>
+                  <div className="detail-row"><span className="dl">Address</span><input value={selectedBoy!.address || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, address: e.target.value })} /></div>
+                  <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button className="btn btn-red" onClick={() => setEditingBoy(false)}>Cancel</button>
+                    <button className="btn btn-black" onClick={saveBoy}>Save</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="detail-row"><span className="dl">Name</span><span className="dv">{selectedBoy?.name}</span></div>
+                  <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedBoy?.mobile}</span></div>
+                  <div className="detail-row"><span className="dl">Aadhar</span><span className="dv">{selectedBoy?.aadhar || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBoy?.address || 'N/A'}</span></div>
+                  <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBoy?.is_active ? 'Active' : 'Inactive'}</span></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order View Modal */}
       {selectedOrderForView && (
-        <div className={`modal-scrim show`} onClick={() => setSelectedOrderForView(null)}>
+        <div className="modal-scrim show" onClick={() => setSelectedOrderForView(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <h3>Order Details</h3>
@@ -770,115 +899,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         </div>
       )}
-
-      {/* Category Modal */}
-      <div className={`modal-scrim ${isCatModal ? 'show' : ''}`} onClick={() => setIsCatModal(false)}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-head"><h3>{selectedCategory?.name}</h3>
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
-              <div className="dots-btn" onClick={() => setCatMenu(!catMenu)}>⋮</div>
-              <div className={`dots-menu ${catMenu ? 'show' : ''}`}>
-                <button onClick={() => { setEditingCat(true); setCatMenu(false); }}>✏️ Edit</button>
-                <button onClick={() => toggleCategoryActive(selectedCategory!)}>{selectedCategory?.is_active ? 'Deactivate' : 'Activate'}</button>
-                <button className="danger" onClick={() => deleteCategory(selectedCategory!.id)}>Delete</button>
-              </div>
-            </div>
-            <div className="modal-close" onClick={() => setIsCatModal(false)}>✕</div>
-          </div>
-          <div className="modal-body">
-            {editingCat ? (
-              <div>
-                <div className="detail-row"><span className="dl">Name</span><input value={selectedCategory!.name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, name: e.target.value })} /></div>
-                <div className="detail-row"><span className="dl">Short</span><input value={selectedCategory!.short_name} onChange={(e) => setSelectedCategory({ ...selectedCategory!, short_name: e.target.value })} /></div>
-                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button className="btn btn-red" onClick={() => setEditingCat(false)}>Cancel</button>
-                  <button className="btn btn-black" onClick={saveCategory}>Save</button>
-                </div>
-              </div>
-            ) : <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedCategory?.is_active ? 'Active' : 'Inactive'}</span></div>}
-          </div>
-        </div>
-      </div>
-
-      {/* Branch Modal */}
-      <div className={`modal-scrim ${isBranchModal ? 'show' : ''}`} onClick={() => setIsBranchModal(false)}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-head"><h3>{selectedBranch?.name}</h3>
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
-              <div className="dots-btn" onClick={() => setBranchMenu(!branchMenu)}>⋮</div>
-              <div className={`dots-menu ${branchMenu ? 'show' : ''}`}>
-                <button onClick={() => { setEditingBranch(true); setBranchMenu(false); }}>✏️ Edit</button>
-                <button onClick={() => toggleBranchActive(selectedBranch!)}>{selectedBranch?.is_active ? 'Deactivate' : 'Activate'}</button>
-                <button className="danger" onClick={() => deleteBranch(selectedBranch!.id)}>Delete</button>
-              </div>
-            </div>
-            <div className="modal-close" onClick={() => setIsBranchModal(false)}>✕</div>
-          </div>
-          <div className="modal-body">
-            {editingBranch ? (
-              <div>
-                <div className="detail-row"><span className="dl">Name</span><input value={selectedBranch!.name} onChange={(e) => setSelectedBranch({ ...selectedBranch!, name: e.target.value })} /></div>
-                <div className="detail-row"><span className="dl">Lat</span><input type="number" value={selectedBranch!.lat} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lat: parseFloat(e.target.value) })} /></div>
-                <div className="detail-row"><span className="dl">Lng</span><input type="number" value={selectedBranch!.lng} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lng: parseFloat(e.target.value) })} /></div>
-                <div className="detail-row"><span className="dl">Range (KM)</span><input type="number" value={selectedBranch!.delivery_range_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, delivery_range_km: parseFloat(e.target.value) })} /></div>
-                <div className="detail-row"><span className="dl">Max Delivery (KM)</span><input type="number" value={selectedBranch!.max_delivery_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, max_delivery_km: parseFloat(e.target.value) })} /></div>
-                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button className="btn btn-red" onClick={() => setEditingBranch(false)}>Cancel</button>
-                  <button className="btn btn-black" onClick={saveBranch}>Save</button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBranch?.address || 'N/A'}</span></div>
-                <div className="detail-row"><span className="dl">Lat</span><span className="dv">{selectedBranch?.lat}</span></div>
-                <div className="detail-row"><span className="dl">Lng</span><span className="dv">{selectedBranch?.lng}</span></div>
-                <div className="detail-row"><span className="dl">Range</span><span className="dv">{selectedBranch?.delivery_range_km} KM</span></div>
-                <div className="detail-row"><span className="dl">Max</span><span className="dv">{selectedBranch?.max_delivery_km} KM</span></div>
-                <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBranch?.is_active ? 'Active' : 'Inactive'}</span></div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Delivery Boy Modal */}
-      <div className={`modal-scrim ${isBoyModal ? 'show' : ''}`} onClick={() => setIsBoyModal(false)}>
-        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-head"><h3>{selectedBoy?.name}</h3>
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
-              <div className="dots-btn" onClick={() => setBoyMenu(!boyMenu)}>⋮</div>
-              <div className={`dots-menu ${boyMenu ? 'show' : ''}`}>
-                <button onClick={() => { setEditingBoy(true); setBoyMenu(false); }}>✏️ Edit</button>
-                <button onClick={() => toggleBoyActive(selectedBoy!)}>{selectedBoy?.is_active ? 'Deactivate' : 'Activate'}</button>
-                <button className="danger" onClick={() => deleteBoy(selectedBoy!.id)}>Delete</button>
-              </div>
-            </div>
-            <div className="modal-close" onClick={() => setIsBoyModal(false)}>✕</div>
-          </div>
-          <div className="modal-body">
-            {editingBoy ? (
-              <div>
-                <div className="detail-row"><span className="dl">Name</span><input value={selectedBoy!.name} onChange={(e) => setSelectedBoy({ ...selectedBoy!, name: e.target.value })} /></div>
-                <div className="detail-row"><span className="dl">Mobile</span><input value={selectedBoy!.mobile} onChange={(e) => setSelectedBoy({ ...selectedBoy!, mobile: e.target.value })} /></div>
-                <div className="detail-row"><span className="dl">Aadhar</span><input value={selectedBoy!.aadhar || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, aadhar: e.target.value })} /></div>
-                <div className="detail-row"><span className="dl">Address</span><input value={selectedBoy!.address || ''} onChange={(e) => setSelectedBoy({ ...selectedBoy!, address: e.target.value })} /></div>
-                <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <button className="btn btn-red" onClick={() => setEditingBoy(false)}>Cancel</button>
-                  <button className="btn btn-black" onClick={saveBoy}>Save</button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="detail-row"><span className="dl">Name</span><span className="dv">{selectedBoy?.name}</span></div>
-                <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedBoy?.mobile}</span></div>
-                <div className="detail-row"><span className="dl">Aadhar</span><span className="dv">{selectedBoy?.aadhar || 'N/A'}</span></div>
-                <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBoy?.address || 'N/A'}</span></div>
-                <div className="detail-row"><span className="dl">Status</span><span className="dv">{selectedBoy?.is_active ? 'Active' : 'Inactive'}</span></div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
