@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'; // ✅ useEffect hata diya
+import { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
 interface OtpFlowProps {
@@ -15,67 +15,22 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const isGreen = theme === 'green';
   const styles = {
-    container: {
-      background: isGreen ? '#0b2e22' : '#ffffff',
-      color: isGreen ? '#ffffff' : '#111111',
-      padding: '20px',
-      borderRadius: '15px',
-      maxWidth: '380px',
-      margin: '0 auto',
-      textAlign: 'center' as const,
-      fontFamily: 'Inter, sans-serif',
-    },
-    input: {
-      width: '100%',
-      padding: '12px',
-      marginBottom: '15px',
-      borderRadius: '8px',
-      border: isGreen ? '1px solid #34c777' : '1px solid #111',
-      background: isGreen ? '#0f3d2c' : '#fff',
-      color: 'inherit',
-      fontSize: '16px',
-    },
-    otpBox: {
-      width: '55px',
-      height: '60px',
-      border: isGreen ? '2px solid #34c777' : '2px solid #111',
-      background: isGreen ? '#0f3d2c' : '#fff',
-      color: 'inherit',
-      fontSize: '24px',
-      fontWeight: 'bold',
-      textAlign: 'center' as const,
-      borderRadius: '10px',
-      outline: 'none',
-    },
-    btn: {
-      width: '100%',
-      padding: '14px',
-      background: isGreen ? '#22a35f' : '#111111',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '8px',
-      fontSize: '16px',
-      fontWeight: 'bold',
-      cursor: 'pointer',
-    }
+    container: { background: isGreen ? '#0b2e22' : '#ffffff', color: isGreen ? '#ffffff' : '#111111', padding: '20px', borderRadius: '15px', maxWidth: '380px', margin: '0 auto', textAlign: 'center' as const, fontFamily: 'Inter, sans-serif' },
+    input: { width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '8px', border: isGreen ? '1px solid #34c777' : '1px solid #111', background: isGreen ? '#0f3d2c' : '#fff', color: 'inherit', fontSize: '16px' },
+    otpBox: { width: '55px', height: '60px', border: isGreen ? '2px solid #34c777' : '2px solid #111', background: isGreen ? '#0f3d2c' : '#fff', color: 'inherit', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' as const, borderRadius: '10px', outline: 'none' },
+    btn: { width: '100%', padding: '14px', background: isGreen ? '#22a35f' : '#111111', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }
   };
 
   const sendOtp = async () => {
     if (mobile.length !== 10) return setError('Sahi 10-digit number daalo!');
     setLoading(true); setError('');
-    
     const { error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
-    
     if (error) setError('OTP error: ' + error.message);
-    else {
-      setStep(2);
-      setTimeout(() => inputsRef.current[0]?.focus(), 100);
-    }
+    else { setStep(2); setTimeout(() => inputsRef.current[0]?.focus(), 100); }
     setLoading(false);
   };
 
@@ -93,9 +48,10 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
     } else {
       setIsSuccess(true);
       setTimeout(() => {
-        if (requiresName && data.role === 'customer') {
+        // ✅ FIX: Agar requiresName true hai, toh seedha Name step, role check nahi karenge
+        if (requiresName) {
           setStep(3);
-          setIsSuccess(false); // Name step ke liye success animation hatao
+          setIsSuccess(false);
         } else {
           onLogin({ mobile });
         }
@@ -124,9 +80,7 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
           <h3 style={{ marginBottom: '10px' }}>Login / Verify</h3>
           <input type="text" style={styles.input} placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} />
           {error && <p style={{ color: isGreen ? '#fca5a5' : 'red', margin: '0 0 10px', fontSize: '13px' }}>{error}</p>}
-          <button style={styles.btn} onClick={sendOtp} disabled={loading}>
-            {loading ? 'Sending...' : 'Send OTP'}
-          </button>
+          <button style={styles.btn} onClick={sendOtp} disabled={loading}>{loading ? 'Sending...' : 'Send OTP'}</button>
         </>
       )}
 
@@ -136,21 +90,11 @@ export default function OtpFlow({ theme, requiresName, onLogin }: OtpFlowProps) 
           <p style={{ fontSize: '14px', marginBottom: '15px', opacity: 0.8 }}>Mobile: {mobile}</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
             {otp.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => { inputsRef.current[index] = el; }}
-                type="text"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleOtpChange(index, e.target.value)}
-                style={styles.otpBox}
-              />
+              <input key={index} ref={(el) => { inputsRef.current[index] = el; }} type="text" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} style={styles.otpBox} />
             ))}
           </div>
           {error && <p style={{ color: isGreen ? '#fca5a5' : 'red', margin: '0 0 10px', fontSize: '13px' }}>{error}</p>}
-          <button style={styles.btn} onClick={verifyOtp} disabled={loading}>
-            {loading ? 'Verifying...' : 'Verify OTP'}
-          </button>
+          <button style={styles.btn} onClick={verifyOtp} disabled={loading}>{loading ? 'Verifying...' : 'Verify OTP'}</button>
           <p style={{ fontSize: '12px', marginTop: '10px', cursor: 'pointer', opacity: 0.8 }} onClick={() => { setStep(1); setOtp(['', '', '', '']); }}>Change Number</p>
         </>
       )}
