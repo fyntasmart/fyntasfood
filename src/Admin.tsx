@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -12,6 +11,8 @@ interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: strin
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
+// ✅ Naya Interface Add kiya
+interface InvoiceSettings { id: string; welcome_note: string; terms: string; footer: string; }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -28,6 +29,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [appPages, setAppPages] = useState<AppPage[]>([]);
+  const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
 
   const [editingProductFull, setEditingProductFull] = useState<Product | null>(null);
   const [selectedPage, setSelectedPage] = useState('about');
@@ -48,18 +50,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
-
   const [catName, setCatName] = useState('');
   const [catShort, setCatShort] = useState('');
   const [catImg, setCatImg] = useState<File | null>(null);
-
   const [newBranchName, setNewBranchName] = useState('');
   const [newBranchAddress, setNewBranchAddress] = useState('');
   const [newBranchLat, setNewBranchLat] = useState('');
   const [newBranchLng, setNewBranchLng] = useState('');
   const [newBranchRange, setNewBranchRange] = useState('10');
   const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
-
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
@@ -69,24 +68,21 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const [editingCat, setEditingCat] = useState(false);
-
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProdModal, setIsProdModal] = useState(false);
   const [prodMenu, setProdMenu] = useState(false);
-
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [isBranchModal, setIsBranchModal] = useState(false);
   const [branchMenu, setBranchMenu] = useState(false);
   const [editingBranch, setEditingBranch] = useState(false);
-
   const [selectedBoy, setSelectedBoy] = useState<DeliveryBoy | null>(null);
   const [isBoyModal, setIsBoyModal] = useState(false);
   const [boyMenu, setBoyMenu] = useState(false);
   const [editingBoy, setEditingBoy] = useState(false);
-  const [originalBoyMobile, setOriginalBoyMobile] = useState(''); // Fixed
+  const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
   const fetchData = async () => {
-    const [b, s, t, c, p, o, d, cust, bn, pages] = await Promise.all([
+    const [b, s, t, c, p, o, d, cust, bn, pages, inv] = await Promise.all([
       supabase.from('branches').select('*'),
       supabase.from('delivery_settings').select('*').single(),
       supabase.from('delivery_tiers').select('*').order('min_km'),
@@ -96,7 +92,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       supabase.from('delivery_boys').select('*'),
       supabase.from('customers').select('*').order('created_at', { ascending: false }),
       supabase.from('banners').select('*').order('created_at', { ascending: false }),
-      supabase.from('app_pages').select('*')
+      supabase.from('app_pages').select('*'),
+      // ✅ Invoice settings fetch karo
+      supabase.from('invoice_settings').select('*').single()
     ]);
     if (b.data) setBranches(b.data);
     if (s.data) setSettings(s.data);
@@ -108,9 +106,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (cust.data) setCustomers(cust.data);
     if (bn.data) setBanners(bn.data);
     if (pages.data && pages.data.length > 0) setAppPages(pages.data);
+    if (inv.data) setInvoiceSettings(inv.data);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    // ✅ Har 10 second mein Data Auto-Refresh karo
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const uploadImage = async (file: File) => {
     const path = `${Date.now()}_${file.name}`;
@@ -120,7 +124,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // Product Full Page Edit
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name);
@@ -266,6 +269,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
+  // ✅ Order Workflow Functions (Accept, Send to Boy, etc.)
   const updateOrderStatus = async (id: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', id);
     fetchData();
@@ -348,6 +352,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     { id: 'branches', label: 'Branches', icon: '🏬' },
     { id: 'charges', label: 'Delivery Charges', icon: '💰' },
     { id: 'banners', label: 'Banners', icon: '🖼️' },
+    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' }, // ✅ New Tab
     { id: 'profile', label: 'My Profile', icon: '👤' },
     { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
@@ -400,7 +405,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
-        {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -413,13 +417,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Orders */}
         {activeTab === 'orders' && (
           <div className="panel">
             <h3>Customer Orders ({orders.length})</h3>
             {orders.length === 0 ? <p>Abhi koi order nahi aaya!</p> : (
               <table>
-                <thead><tr><th>Order ID</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Status</th><th>Delivery Boy</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Delivery Boy</th><th>Actions</th></tr></thead>
                 <tbody>
                   {orders.map(order => {
                     const assignedBoy = deliveryBoys.find(b => b.id === order.delivery_boy_id);
@@ -427,27 +430,32 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                       <tr key={order.id}>
                         <td style={{ fontSize: '12px' }}>#{order.id.slice(0, 6)}</td>
                         <td>{order.customer_name}<br /><span style={{ fontSize: '11px', color: '#666' }}>{order.address}</span></td>
-                        <td>{order.customer_mobile}</td>
                         <td>₹{order.total_amount}</td>
+                        <td>{order.status}</td>
+                        <td>{assignedBoy ? assignedBoy.name : 'Not Assigned'}</td>
                         <td>
-                          <select value={order.status} onChange={(e) => updateOrderStatus(order.id, e.target.value)} style={{ padding: '5px', width: 'auto' }}>
-                            <option value="pending">Pending</option>
-                            <option value="accepted">Accepted</option>
-                            <option value="out_for_delivery">Out for Delivery</option>
-                            <option value="delivered">Delivered</option>
-                          </select>
-                        </td>
-                        <td>
-                          <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '5px', width: 'auto' }}>
-                            <option value="">Assign Boy</option>
-                            {deliveryBoys.filter(b => b.is_active).map(boy => (
-                              <option key={boy.id} value={boy.id}>{boy.name}</option>
-                            ))}
-                          </select>
-                          {assignedBoy && <span style={{ display: 'block', fontSize: '11px', color: '#059669' }}>To: {assignedBoy.name}</span>}
-                        </td>
-                        <td>
-                          <button className="btn btn-blue" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => { updateOrderStatus(order.id, 'delivered'); alert('Order Delivered!'); }}>Mark Delivered</button>
+                          {/* ✅ Complete Workflow */}
+                          {order.status === 'pending' && (
+                            <button className="btn btn-green" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => updateOrderStatus(order.id, 'accepted')}>Accept</button>
+                          )}
+                          {order.status === 'accepted' && (
+                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                              <button className="btn btn-black" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => window.open(`/invoice/${order.id}`, '_blank')}>Print Invoice</button>
+                              <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '5px', fontSize: '12px', width: 'auto' }}>
+                                <option value="">Assign Boy</option>
+                                {deliveryBoys.filter(b => b.is_active).map(boy => (
+                                  <option key={boy.id} value={boy.id}>{boy.name}</option>
+                                ))}
+                              </select>
+                              {order.delivery_boy_id && (
+                                <button className="btn btn-blue" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}>Send to Boy</button>
+                              )}
+                            </div>
+                          )}
+                          {order.status === 'out_for_delivery' && (
+                            <span style={{ fontWeight: 'bold', color: '#111' }}>🛵 {assignedBoy?.name || 'Assigned'}</span>
+                          )}
+                          {order.status === 'delivered' && <span style={{ color: 'green', fontWeight: 'bold' }}>Delivered ✅</span>}
                         </td>
                       </tr>
                     );
@@ -458,7 +466,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Products */}
         {activeTab === 'products' && (
           <div className="panel">
             {editingProductFull ? (
@@ -561,7 +568,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Categories */}
         {activeTab === 'categories' && (
           <div className="panel">
             <h3>All Categories</h3>
@@ -587,7 +593,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Customers */}
         {activeTab === 'customers' && (
           <div className="panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -605,7 +610,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Delivery Boys */}
         {activeTab === 'delivery' && (
           <div className="panel">
             <h3>Add Delivery Boy</h3>
@@ -621,7 +625,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Branches */}
         {activeTab === 'branches' && (
           <div className="panel">
             <h3>Add Branch (With Location & Max KM)</h3>
@@ -639,7 +642,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Charges */}
         {activeTab === 'charges' && (
           <div className="panel">
             <h3>Delivery Charge Settings</h3>
@@ -661,7 +663,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Banners */}
         {activeTab === 'banners' && (
           <div className="panel">
             <h3>Add New Banner</h3>
@@ -690,7 +691,24 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Profile */}
+        {/* ✅ Naya Invoice Settings Tab */}
+        {activeTab === 'invoice_settings' && (
+          <div className="panel">
+            <h3>Invoice Settings</h3>
+            <label>Welcome Note</label>
+            <textarea value={invoiceSettings.welcome_note || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, welcome_note: e.target.value })} rows={2} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            <label>Terms & Conditions</label>
+            <textarea value={invoiceSettings.terms || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, terms: e.target.value })} rows={3} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            <label>Footer Text</label>
+            <input value={invoiceSettings.footer || ''} onChange={(e) => setInvoiceSettings({ ...invoiceSettings, footer: e.target.value })} style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+            <button className="btn btn-black" style={{ marginTop: '15px' }} onClick={async () => {
+              await supabase.from('invoice_settings').upsert(invoiceSettings);
+              alert('Invoice Settings Saved!');
+              fetchData();
+            }}>Save Settings</button>
+          </div>
+        )}
+
         {activeTab === 'profile' && (
           <div className="panel">
             <h3>My Profile (Admin)</h3>
@@ -703,7 +721,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Policies */}
         {activeTab === 'policies' && (
           <div className="panel">
             <h3>Policies</h3>
@@ -714,7 +731,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Content */}
         {activeTab === 'content' && (
           <div className="panel">
             <h3>Manage App Content</h3>
