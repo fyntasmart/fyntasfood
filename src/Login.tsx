@@ -7,7 +7,7 @@ const Login = ({ onLogin }: LoginProps) => {
     <div style={{ padding: '40px 20px', background: '#f8f9fa', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <OtpFlow 
         theme="black" 
-        requiresName={false} // Admin ke liye name nahi chahiye
+        requiresName={false} 
         onLogin={(user) => {
           localStorage.setItem('admin_remember', 'true');
           onLogin({ mobile: user.mobile });
