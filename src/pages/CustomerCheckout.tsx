@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'react-qr-code'; // ✅ Updated import
 
 const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [name, setName] = useState('');
@@ -13,11 +13,9 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [loading, setLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi');
   
-  // UPI Modal State
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [tempOrderId, setTempOrderId] = useState('');
 
-  // UPI Details
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
 
@@ -40,7 +38,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
 
   const totalAmount = cart.reduce((sum: number, item: any) => sum + (item.price * item.qty), 0) + deliveryCharge;
 
-  // UPI Link Generator
   const generateUpiLink = (amount: number, orderRef: string) => {
     const payee = UPI_ID;
     const payeeName = encodeURIComponent(UPI_NAME);
@@ -123,7 +120,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
           ))}
         </div>
 
-        {/* Address Form */}
         <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
           <h3 style={{ color: '#111827' }}>Delivery Address</h3>
           <input placeholder="Aapka Naam" value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
@@ -131,7 +127,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
           <textarea placeholder="Pura Address" value={address} onChange={(e) => setAddress(e.target.value)} rows={2} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
         </div>
 
-        {/* Payment Method Selection */}
         <div style={{ marginBottom: '15px' }}>
           <h3 style={{ color: '#111827' }}>Payment Method</h3>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -140,7 +135,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
           </div>
         </div>
 
-        {/* Total */}
         <div style={{ borderTop: '2px solid #e5e7eb', paddingTop: '15px' }}>
           <p style={{ display: 'flex', justifyContent: 'space-between', color: '#111827' }}><span>Items Total</span><span>₹{cart.reduce((s: number, i: any) => s + (i.price * i.qty), 0)}</span></p>
           <p style={{ display: 'flex', justifyContent: 'space-between', color: '#111827' }}><span>Delivery Charge</span><span>₹{deliveryCharge}</span></p>
@@ -166,12 +160,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
             <h3 style={{ color: '#111827', marginBottom: '5px' }}>Scan & Pay</h3>
             <p style={{ color: '#666', margin: '0 0 15px', fontSize: '14px' }}>Total Amount: <b style={{ color: '#1e40af' }}>₹{totalAmount}</b></p>
 
-            {/* QR Code */}
+            {/* ✅ Updated QR Code Component */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
-              <QRCodeSVG 
+              <QRCode 
                 value={generateUpiLink(totalAmount, tempOrderId)} 
                 size={200} 
-                level="M" 
                 fgColor="#000000" 
                 bgColor="#ffffff" 
               />
