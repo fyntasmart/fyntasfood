@@ -6,8 +6,9 @@ import CustomerFavorites from './pages/CustomerFavorites';
 import CustomerCart from './pages/CustomerCart';
 import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
-// ✅ Import Orders page
 import CustomerOrders from './pages/CustomerOrders';
+// ✅ Address wala naya page import kiya
+import CustomerAddresses from './pages/CustomerAddresses';
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -122,15 +123,16 @@ const CustomerLayout = () => {
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
         
-        {/* ✅ Orders Page Render */}
         {activeTab === 'orders' && <CustomerOrders />}
+        
+        {/* ✅ Address Page Render Ho Raha Hai */}
+        {activeTab === 'addresses' && <CustomerAddresses />}
 
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
         {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
 
-        {/* Drawer ke baaki pages */}
+        {/* Drawer ke baaki placeholder pages */}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
-        {activeTab === 'addresses' && <div style={{ padding: '20px' }}><p>Manage Addresses</p></div>}
         {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
         {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
         {activeTab === 'terms' && <div style={{ padding: '20px' }}><p>Terms & Conditions</p></div>}
