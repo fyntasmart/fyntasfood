@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react'; // ✅ useEffect hataya
 import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
@@ -8,8 +8,7 @@ import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerAddresses from './pages/CustomerAddresses';
-import { supabase } from './supabaseClient';
-import OtpFlow from './components/OtpFlow';
+import OtpFlow from './components/OtpFlow'; // ✅ Import OtpFlow
 
 const CustomerLayout = () => {
   const [activeTab, setActiveTab] = useState('home');
@@ -139,7 +138,6 @@ const CustomerLayout = () => {
         {activeTab === 'favorite' && <CustomerFavorites />}
         {activeTab === 'profile' && <CustomerProfile onShowOrders={() => setActiveTab('orders')} />}
         
-        {/* ✅ Props hata diye (Build error fix) */}
         {activeTab === 'orders' && <CustomerOrders />}
         {activeTab === 'addresses' && <CustomerAddresses />}
 
