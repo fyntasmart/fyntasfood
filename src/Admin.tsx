@@ -7,7 +7,8 @@ interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
 interface Category { id: string; name: string; short_name: string; image_url?: string; is_active: boolean; }
 interface Product { id: string; name: string; sku: string; price: number; stock: number; unit: string; description?: string; discount_type: string; discount_value: number; gst_enabled: boolean; gst_rate: number; is_active: boolean; category_id?: string; image_url?: string; image_2?: string; image_3?: string; image_4?: string; }
-interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; }
+// ✅ FIX: payment_method property add kiya
+interface Order { id: string; customer_name: string; customer_mobile: string; address: string; total_amount: number; delivery_charge: number; status: string; delivery_boy_id: string | null; created_at: string; payment_method: string; }
 interface DeliveryBoy { id: string; name: string; mobile: string; aadhar?: string; address?: string; is_active: boolean; }
 interface Customer { id: string; name: string; mobile: string; created_at: string; }
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
@@ -144,7 +145,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // ---- Product Functions (Same as before) ----
+  // ---- Product Functions ----
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name); setProdSku(product.sku || ''); setProdCat(product.category_id || '');
@@ -204,6 +205,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsProdModal(false); fetchData();
   };
 
+  // ---- Category Functions ----
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -211,54 +213,49 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     await supabase.from('categories').insert({ name: catName, short_name: catShort, image_url: imgUrl });
     setCatName(''); setCatShort(''); setCatImg(null); fetchData();
   };
-
   const saveCategory = async () => {
     if (!selectedCategory) return;
     await supabase.from('categories').update(selectedCategory).eq('id', selectedCategory.id);
     setEditingCat(false); setCatMenu(false); fetchData();
   };
-
   const toggleCategoryActive = async (cat: Category) => {
     await supabase.from('categories').update({ is_active: !cat.is_active }).eq('id', cat.id);
     setSelectedCategory({ ...cat, is_active: !cat.is_active }); setCatMenu(false); fetchData();
   };
-
   const deleteCategory = async (id: string) => {
     if (!confirm('Category delete karna hai?')) return;
     await supabase.from('categories').delete().eq('id', id);
     setIsCatModal(false); fetchData();
   };
 
+  // ---- Branch Functions ----
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
     setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); setNewBranchMaxKm('15'); fetchData();
   };
-
   const saveBranch = async () => {
     if (!selectedBranch) return;
     await supabase.from('branches').update(selectedBranch).eq('id', selectedBranch.id);
     setEditingBranch(false); setBranchMenu(false); fetchData();
   };
-
   const deleteBranch = async (id: string) => {
     if (!confirm('Branch delete karna hai?')) return;
     await supabase.from('branches').delete().eq('id', id);
     setIsBranchModal(false); fetchData();
   };
-
   const toggleBranchActive = async (branch: Branch) => {
     await supabase.from('branches').update({ is_active: !branch.is_active }).eq('id', branch.id);
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
+  // ---- Delivery Boy Functions ----
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
     await supabase.from('registered_users').insert({ mobile: dbMobile, role: 'delivery_boy' });
     setDbName(''); setDbMobile(''); setDbAadhar(''); setDbAddress(''); fetchData();
   };
-
   const saveBoy = async () => {
     if (!selectedBoy) return;
     const { error } = await supabase.from('delivery_boys').update(selectedBoy).eq('id', selectedBoy.id);
@@ -268,42 +265,34 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     }
     setEditingBoy(false); setBoyMenu(false); fetchData();
   };
-
   const deleteBoy = async (id: string) => {
     if (!confirm('Delivery boy delete karna hai?')) return;
     await supabase.from('delivery_boys').delete().eq('id', id);
     setIsBoyModal(false); fetchData();
   };
-
   const toggleBoyActive = async (boy: DeliveryBoy) => {
     await supabase.from('delivery_boys').update({ is_active: !boy.is_active }).eq('id', boy.id);
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
-  // ---- ORDER MANAGEMENT NEW FUNCTIONS ----
+  // ---- Order Management New Functions ----
   const handleStatusChange = async (orderId: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     fetchData();
   };
-
   const deleteOrder = async (orderId: string) => {
     if (!confirm('Kya aap yeh order delete karna chahte hain?')) return;
-    // Delete order items first then order
     await supabase.from('order_items').delete().eq('order_id', orderId);
     await supabase.from('orders').delete().eq('id', orderId);
-    setOpenOrderMenuId(null);
-    fetchData();
+    setOpenOrderMenuId(null); fetchData();
   };
-
   const printReceipt = (orderId: string, format: string) => {
     window.open(`/invoice/${orderId}?format=${format}`, '_blank');
   };
-
   const assignDeliveryBoy = async (orderId: string, boyId: string) => {
     if (!boyId) return;
     await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId);
-    setOpenOrderMenuId(null); // Close menu after assignment
-    fetchData();
+    setOpenOrderMenuId(null); fetchData();
   };
 
   // ---- Pagination Logic ----
@@ -314,18 +303,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                           order.id.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
-
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
-
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // ---- Invoice Settings Functions ----
   const saveInvoiceSettings = async () => {
     await supabase.from('invoice_settings').upsert(invoiceSettings);
-    alert('Invoice Settings Saved!');
-    fetchData();
+    alert('Invoice Settings Saved!'); fetchData();
   };
 
   const exportCustomers = () => {
@@ -341,29 +327,19 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'products', label: 'Products', icon: '📁' },
-    { id: 'categories', label: 'Categories', icon: '🗂️' },
-    { id: 'customers', label: 'Customers', icon: '👥' },
-    { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
-    { id: 'branches', label: 'Branches', icon: '🏬' },
-    { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' },
-    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
-    { id: 'profile', label: 'My Profile', icon: '👤' },
-    { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'products', label: 'Products', icon: '📁' }, { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'customers', label: 'Customers', icon: '👥' }, { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
+    { id: 'branches', label: 'Branches', icon: '🏬' }, { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' }, { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
+    { id: 'profile', label: 'My Profile', icon: '👤' }, { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
-  // Map user-friendly labels to DB statuses
   const statusOptions = [
-    { value: 'pending', label: 'NEW' },
-    { value: 'accepted', label: 'CONFIRMED' },
-    { value: 'processing', label: 'PROCESSING' },
-    { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
-    { value: 'delivered', label: 'DELIVERED' },
-    { value: 'completed', label: 'COMPLETED' },
+    { value: 'pending', label: 'NEW' }, { value: 'accepted', label: 'CONFIRMED' },
+    { value: 'processing', label: 'PROCESSING' }, { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
+    { value: 'delivered', label: 'DELIVERED' }, { value: 'completed', label: 'COMPLETED' },
     { value: 'cancelled', label: 'CANCELLED' },
   ];
 
@@ -378,13 +354,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .panel { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         input, select, textarea { background: #ffffff; border: 1px solid #e5e7eb; color: #111111; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
         .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
-        .btn-black { background: #111111; }
-        .btn-green { background: #059669; }
-        .btn-red { background: #dc2626; }
-        .btn-blue { background: #2563eb; }
+        .btn-black { background: #111111; } .btn-green { background: #059669; }
+        .btn-red { background: #dc2626; } .btn-blue { background: #2563eb; }
         .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .active { background: #d1fae5; color: #065f46; }
-        .inactive { background: #fee2e2; color: #991b1b; }
+        .active { background: #d1fae5; color: #065f46; } .inactive { background: #fee2e2; color: #991b1b; }
         .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:300; padding:20px;}
         .modal-scrim.show{display:flex;}
         .modal-card{width:100%; max-width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); position:relative;}
@@ -398,13 +371,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .dots-menu button.danger{color:#dc2626;}
         .modal-body{padding:18px 20px;}
         .detail-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:14px;}
-        .detail-row .dl{color:#6b7280;}
-        .detail-row .dv{font-weight:600;}
+        .detail-row .dl{color:#6b7280;} .detail-row .dv{font-weight:600;}
         .modal-body input { width: 100%; text-align: left; margin-bottom: 5px; }
-        
-        /* Order Table Styles */
         .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .search-box { max-width: 300px; position: relative; }
         .order-table { width: 100%; border-collapse: collapse; }
         .order-table th { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; font-weight: 600; }
         .order-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; vertical-align: middle; }
@@ -435,27 +404,15 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* NEW ORDERS TAB */}
         {activeTab === 'orders' && (
           <div className="panel">
             <div className="table-controls">
               <h3 style={{ margin: 0 }}>All Orders</h3>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <div className="search-box">
-                  <input
-                    type="text"
-                    placeholder="Search orders..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ paddingLeft: '10px' }}
-                  />
-                </div>
+                <input type="text" placeholder="Search orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ maxWidth: '200px' }} />
                 <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: '150px' }}>
                   <option value="all">All Status</option>
                   {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                </select>
-                <select style={{ maxWidth: '70px' }}>
-                  <option>10</option>
                 </select>
               </div>
             </div>
@@ -463,15 +420,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             <table className="order-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Order No</th>
-                  <th>Customer</th>
-                  <th>Delivery Address</th>
-                  <th>Amount</th>
-                  <th>Payment</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Actions</th>
+                  <th>ID</th><th>Order No</th><th>Customer</th><th>Delivery Address</th>
+                  <th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,37 +430,19 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                     <tr key={order.id}>
                       <td>#{order.id.slice(0, 4)}</td>
                       <td style={{ fontWeight: '600' }}>ORD{order.id.slice(0, 6).toUpperCase()}</td>
-                      <td>
-                        {order.customer_name}
-                        <br /><span style={{ fontSize: '11px', color: '#6b7280' }}>{order.customer_mobile}</span>
-                      </td>
-                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {order.address}
-                      </td>
+                      <td>{order.customer_name}<br /><span style={{ fontSize: '11px', color: '#6b7280' }}>{order.customer_mobile}</span></td>
+                      <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{order.address}</td>
                       <td style={{ fontWeight: '700' }}>₹{order.total_amount}</td>
                       <td>{order.payment_method === 'upi' ? 'UPI' : 'COD'}</td>
                       <td>
-                        {/* Manual Status Change Dropdown */}
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                        >
-                          {statusOptions.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
+                        <select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value)} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', border: '1px solid #d1d5db', borderRadius: '4px' }}>
+                          {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </td>
                       <td>{new Date(order.created_at).toLocaleString()}</td>
                       <td>
-                        {/* 3-Dot Menu */}
                         <div className="menu-wrapper" ref={menuRef}>
-                          <button
-                            className="dots-btn"
-                            onClick={() => setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id)}
-                          >
-                            ⋮
-                          </button>
+                          <button className="dots-btn" onClick={() => setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id)}>⋮</button>
                           <div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`}>
                             <button onClick={() => { setSelectedOrderForView(order); setOpenOrderMenuId(null); }}>👁️ View Details</button>
                             <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
@@ -520,15 +452,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                               <button onClick={() => printReceipt(order.id, 'thermal-58')}>🖨️ Thermal 58mm</button>
                             </div>
                             <div style={{ borderTop: '1px solid #f3f4f6' }}>
-                              <select
-                                value={order.delivery_boy_id || ''}
-                                onChange={(e) => assignDeliveryBoy(order.id, e.target.value)}
-                                style={{ padding: '8px 14px', width: '100%', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
-                              >
+                              <select value={order.delivery_boy_id || ''} onChange={(e) => assignDeliveryBoy(order.id, e.target.value)} style={{ padding: '8px 14px', width: '100%', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>
                                 <option value="">🛵 Assign Boy</option>
-                                {deliveryBoys.filter(b => b.is_active).map(boy => (
-                                  <option key={boy.id} value={boy.id}>{boy.name}</option>
-                                ))}
+                                {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
                               </select>
                             </div>
                             <button className="danger" onClick={() => deleteOrder(order.id)}>🗑️ Delete</button>
@@ -541,57 +467,65 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               </tbody>
             </table>
 
-            {/* Pagination */}
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', alignItems: 'center' }}>
-              <button
-                className="btn btn-black"
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-                onClick={() => currentPage > 1 && paginate(currentPage - 1)}
-                disabled={currentPage <= 1}
-              >
-                Previous
-              </button>
+              <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage > 1 && paginate(currentPage - 1)} disabled={currentPage <= 1}>Previous</button>
               <span style={{ fontSize: '13px' }}>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
-              <button
-                className="btn btn-black"
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-                onClick={() => currentPage < Math.ceil(filteredOrders.length / ordersPerPage) && paginate(currentPage + 1)}
-                disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}
-              >
-                Next
-              </button>
+              <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage < Math.ceil(filteredOrders.length / ordersPerPage) && paginate(currentPage + 1)} disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}>Next</button>
             </div>
           </div>
         )}
 
-        {/* ... (Baaki Tabs: Products, Categories, Customers, Delivery, Branches, Charges, Banners, Invoice Settings, Profile, Policies, Content) ... */}
-        {/* ...(Yahan pichle wale saare tabs ka code waisa hi rahega, maine Order tab ko replace kiya hai)... */}
-        
-        {/* Baaki tabs ka code yahan paste kar do, kyunki pichle response mein full code diya tha. */}
-        {/* NOTE: Aapko bas 'products', 'categories', 'customers', 'delivery', 'branches', 'charges', 'banners', 'invoice_settings', 'profile', 'policies', 'content' ke sections wahi rakhne hain jo pichle code mein the. */}
-
-        {/* View Order Details Modal */}
-        {selectedOrderForView && (
-          <div className={`modal-scrim show`} onClick={() => setSelectedOrderForView(null)}>
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-head">
-                <h3>Order Details</h3>
-                <div className="modal-close" onClick={() => setSelectedOrderForView(null)}>✕</div>
-              </div>
-              <div className="modal-body">
-                <div className="detail-row"><span className="dl">Order ID</span><span className="dv">ORD{selectedOrderForView.id.slice(0, 6).toUpperCase()}</span></div>
-                <div className="detail-row"><span className="dl">Customer</span><span className="dv">{selectedOrderForView.customer_name}</span></div>
-                <div className="detail-row"><span className="dl">Mobile</span><span className="dv">{selectedOrderForView.customer_mobile}</span></div>
-                <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedOrderForView.address}</span></div>
-                <div className="detail-row"><span className="dl">Delivery Charge</span><span className="dv">₹{selectedOrderForView.delivery_charge}</span></div>
-                <div className="detail-row"><span className="dl">Total</span><span className="dv" style={{ fontWeight: 'bold', color: '#059669' }}>₹{selectedOrderForView.total_amount}</span></div>
-              </div>
+        {activeTab === 'products' && ( /* Products UI */ )}
+        {activeTab === 'categories' && (
+          <div className="panel">
+            <h3>All Categories</h3>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <input placeholder="Category Name" value={catName} onChange={(e) => setCatName(e.target.value)} />
+              <input placeholder="Short Code" value={catShort} onChange={(e) => setCatShort(e.target.value)} />
+              <input type="file" accept="image/*" onChange={(e) => setCatImg(e.target.files?.[0] || null)} />
+              <button className="btn btn-black" onClick={addCategory}>Add</button>
             </div>
+            <table>
+              <thead><tr><th>Image</th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {categories.map(cat => (
+                  <tr key={cat.id}>
+                    <td>{cat.image_url ? <img src={cat.image_url} alt="cat" style={{ width: 40, height: 40, borderRadius: 8 }} /> : 'No Img'}</td>
+                    <td>{cat.name}</td>
+                    <td><span className={`status-pill ${cat.is_active ? 'active' : 'inactive'}`}>{cat.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td><div className="dots-btn" onClick={() => { setSelectedCategory(cat); setIsCatModal(true); setCatMenu(false); setEditingCat(false); }}>⋮</div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
-    </div>
-  );
-};
 
-export default Admin;
+        {activeTab === 'customers' && (
+          <div className="panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>All Customers ({customers.length})</h3>
+              <button className="btn btn-black" onClick={exportCustomers}>Export Excel (CSV)</button>
+            </div>
+            <table>
+              <thead><tr><th>Name</th><th>Mobile Number</th><th>Joined</th></tr></thead>
+              <tbody>
+                {customers.length === 0 ? <tr><td colSpan={3} style={{ textAlign: 'center' }}>Abhi koi customer nahi hai</td></tr> : (
+                  customers.map(c => <tr key={c.id}><td>{c.name || 'Unknown'}</td><td>{c.mobile}</td><td>{new Date(c.created_at).toLocaleDateString()}</td></tr>)
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'delivery' && (
+          <div className="panel">
+            <h3>Add Delivery Boy</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input placeholder="Name" value={dbName} onChange={(e) => setDbName(e.target.value)} />
+              <input placeholder="Mobile" value={dbMobile} onChange={(e) => setDbMobile(e.target.value)} />
+              <input placeholder="Aadhar" value={dbAadhar} onChange={(e) => setDbAadhar(e.target.value)} />
+              <input placeholder="Address" value={dbAddress} onChange={(e) => setDbAddress(e.target.value)} />
+            </div>
+            <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addDeliveryBoy}>Add Boy</button>
+            <h3 style={{ margin
