@@ -57,6 +57,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [newBranchLat, setNewBranchLat] = useState('');
   const [newBranchLng, setNewBranchLng] = useState('');
   const [newBranchRange, setNewBranchRange] = useState('10');
+  const [newBranchMaxKm, setNewBranchMaxKm] = useState('15');
 
   const [dbName, setDbName] = useState('');
   const [dbMobile, setDbMobile] = useState('');
@@ -241,8 +242,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
-    await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10 });
-    setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); fetchData();
+    await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
+    setNewBranchName(''); setNewBranchAddress(''); setNewBranchLat(''); setNewBranchLng(''); setNewBranchRange('10'); setNewBranchMaxKm('15'); fetchData();
   };
   const saveBranch = async () => {
     if (!selectedBranch) return;
@@ -326,8 +327,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
         .active { background: #d1fae5; color: #065f46; }
         .inactive { background: #fee2e2; color: #991b1b; }
-        
-        /* Modal Styles */
         .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:300; padding:20px;}
         .modal-scrim.show{display:flex;}
         .modal-card{width:100%; max-width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); position:relative;}
@@ -343,8 +342,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .detail-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:14px;}
         .detail-row .dl{color:#6b7280;}
         .detail-row .dv{font-weight:600;}
-        
-        /* Fix inputs in modal to be left-aligned and full width */
         .modal-body input { width: 100%; text-align: left; margin-bottom: 5px; }
       `}</style>
 
@@ -556,13 +553,14 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
         {activeTab === 'branches' && (
           <div className="panel">
-            <h3>Add Branch (With Location)</h3>
+            <h3>Add Branch (With Location & Max KM)</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <input placeholder="Branch Name" value={newBranchName} onChange={(e) => setNewBranchName(e.target.value)} />
               <input placeholder="Address" value={newBranchAddress} onChange={(e) => setNewBranchAddress(e.target.value)} />
               <input placeholder="Latitude" value={newBranchLat} onChange={(e) => setNewBranchLat(e.target.value)} />
               <input placeholder="Longitude" value={newBranchLng} onChange={(e) => setNewBranchLng(e.target.value)} />
               <input placeholder="Range (KM)" value={newBranchRange} onChange={(e) => setNewBranchRange(e.target.value)} />
+              <input placeholder="Max Delivery (KM)" value={newBranchMaxKm} onChange={(e) => setNewBranchMaxKm(e.target.value)} />
             </div>
             <button className="btn btn-black" style={{ marginTop: '10px' }} onClick={addBranch}>Add Branch</button>
             <h3 style={{ marginTop: '20px' }}>All Branches (Click Name)</h3>
@@ -702,14 +700,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       </div>
 
-      {/* Branch Modal - Fixed! */}
+      {/* Branch Modal - WITH MAX KM EDIT */}
       <div className={`modal-scrim ${isBranchModal ? 'show' : ''}`} onClick={() => setIsBranchModal(false)}>
         <div className="modal-card" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head"><h3>{selectedBranch?.name}</h3>
             <div style={{ position: 'relative', marginLeft: 'auto' }}>
               <div className="dots-btn" onClick={() => setBranchMenu(!branchMenu)}>⋮</div>
               <div className={`dots-menu ${branchMenu ? 'show' : ''}`}>
-                {/* ✅ FIX: Edit click karte hi menu band ho jayega */}
                 <button onClick={() => { setEditingBranch(true); setBranchMenu(false); }}>✏️ Edit</button>
                 <button onClick={() => toggleBranchActive(selectedBranch!)}>{selectedBranch?.is_active ? 'Deactivate' : 'Activate'}</button>
                 <button className="danger" onClick={() => deleteBranch(selectedBranch!.id)}>Delete</button>
@@ -719,18 +716,18 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
           <div className="modal-body">
             {editingBranch ? (
-              // ✅ Sirf Name, Lat, aur Lng edit hoga (Max KM nahi)
               <div>
                 <div className="detail-row"><span className="dl">Name</span><input value={selectedBranch!.name} onChange={(e) => setSelectedBranch({ ...selectedBranch!, name: e.target.value })} /></div>
                 <div className="detail-row"><span className="dl">Lat</span><input type="number" value={selectedBranch!.lat} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lat: parseFloat(e.target.value) })} /></div>
                 <div className="detail-row"><span className="dl">Lng</span><input type="number" value={selectedBranch!.lng} onChange={(e) => setSelectedBranch({ ...selectedBranch!, lng: parseFloat(e.target.value) })} /></div>
+                <div className="detail-row"><span className="dl">Range (KM)</span><input type="number" value={selectedBranch!.delivery_range_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, delivery_range_km: parseFloat(e.target.value) })} /></div>
+                <div className="detail-row"><span className="dl">Max Delivery (KM)</span><input type="number" value={selectedBranch!.max_delivery_km} onChange={(e) => setSelectedBranch({ ...selectedBranch!, max_delivery_km: parseFloat(e.target.value) })} /></div>
                 <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                   <button className="btn btn-red" onClick={() => setEditingBranch(false)}>Cancel</button>
                   <button className="btn btn-black" onClick={saveBranch}>Save</button>
                 </div>
               </div>
             ) : (
-              // View mode (Max KM yahan dikhega, lekin edit nahi hoga)
               <div>
                 <div className="detail-row"><span className="dl">Address</span><span className="dv">{selectedBranch?.address || 'N/A'}</span></div>
                 <div className="detail-row"><span className="dl">Lat</span><span className="dv">{selectedBranch?.lat}</span></div>
