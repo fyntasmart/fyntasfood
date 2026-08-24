@@ -7,9 +7,7 @@ const DeliveryBoyDashboard = () => {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
 
   const sendOtp = async () => {
     if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
@@ -27,15 +25,9 @@ const DeliveryBoyDashboard = () => {
     if (error || !data?.success) {
       setError('Galat OTP! Dobara try karo.');
     } else if (data.role !== 'delivery_boy') {
-      // 🔥 Yahan role check ho raha hai
       setError('Yeh mobile number Delivery Boy ke liye registered nahi hai!');
     } else {
-      // Delivery Boy fetch karo
-      const { data: boy } = await supabase.from('delivery_boys').select('*').eq('mobile', mobile).single();
-      if (boy) {
-        setOrders([]); // Orders fetch logic baad mein
-        setIsLoggedIn(true);
-      }
+      setIsLoggedIn(true);
     }
     setLoading(false);
   };
@@ -64,14 +56,14 @@ const DeliveryBoyDashboard = () => {
     );
   }
 
-  // (Delivery Boy Dashboard UI - Orders list yahan hi rahega)
   return (
     <div style={{ padding: '20px', background: '#f4f6f8', minHeight: '100vh' }}>
       <h2>Delivery Boy Dashboard</h2>
       <p>Mobile: {mobile}</p>
-      <button onClick={() => setIsLoggedIn(false)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer' }}>Logout</button>
-      <h3>Assigned Orders (0)</h3>
-      <p>Abhi koi order assign nahi hua.</p>
+      <button onClick={() => setIsLoggedIn(false)} style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', marginBottom: '20px' }}>Logout</button>
+      <h3>Assigned Orders</h3>
+      <p style={{ color: '#666' }}>Abhi koi order assign nahi hua.</p>
+      {/* (Aage yahan Orders ka pura logic add hoga) */}
     </div>
   );
 };
