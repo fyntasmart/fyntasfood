@@ -42,13 +42,19 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
 
   const totalAmount = cart.reduce((sum: number, item: any) => sum + (item.price * item.qty), 0) + deliveryCharge;
 
+  // ✅ FIX: Exact Error dikhane ke liye
   const sendOtp = async () => {
     if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
     setLoading(true); setError('');
 
-    const { error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
-    if (error) setError('OTP send nahi hua.');
-    else { setStep(2); alert('OTP bhej diya gaya hai!'); }
+    const { data, error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
+    
+    if (error) {
+      setError('OTP error: ' + (data?.error || error.message || 'Unknown error'));
+    } else {
+      setStep(2);
+      alert('OTP bhej diya gaya hai!');
+    }
     setLoading(false);
   };
 
@@ -128,7 +134,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
             <h3 style={{ color: '#111827' }}>Login / Verify</h3>
             <p style={{ color: '#666' }}>Order karne ke liye apna mobile number daalo</p>
             <input type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {error && <p style={{ color: 'red', wordBreak: 'break-word' }}>{error}</p>}
             <button onClick={sendOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               {loading ? 'Sending...' : 'Send OTP'}
             </button>
