@@ -193,10 +193,38 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const handleStatusChange = async (orderId: string, status: string) => { await supabase.from('orders').update({ status }).eq('id', orderId); fetchData(); };
   const deleteOrder = async (orderId: string) => { if (!confirm('Kya aap yeh order delete karna chahte hain?')) return; await supabase.from('order_items').delete().eq('order_id', orderId); await supabase.from('orders').delete().eq('id', orderId); setOpenOrderMenuId(null); fetchData(); };
   const printReceipt = (orderId: string, format: string) => { window.open(`/invoice/${orderId}?format=${format}`, '_blank'); };
-  const assignDeliveryBoy = async (orderId: string, boyId: string) => { if (!boyId) return; await supabase.from('orders').update({ delivery_boy_id: boyId }).eq('id', orderId); setOpenOrderMenuId(null); fetchData(); };
+  // Removed unused function: assignDeliveryBoy
 
   const toggleCustomerActive = async (customer: Customer) => { await supabase.from('customers').update({ is_active: !customer.is_active }).eq('id', customer.id); setSelectedCustomerForView({ ...customer, is_active: !customer.is_active }); setOpenCustomerMenuId(null); fetchData(); };
   const deleteCustomer = async (id: string) => { if (!confirm('Kya aap yeh customer delete karna chahte hain?')) return; await supabase.from('customers').delete().eq('id', id); setSelectedCustomerForView(null); setOpenCustomerMenuId(null); fetchData(); };
+
+  // ✅ ADDED: exportCustomers function
+  const exportCustomers = () => {
+    if (customers.length === 0) {
+      alert('No customers to export.');
+      return;
+    }
+
+    const headers = ['Name', 'Mobile', 'Joined Date', 'Status'];
+    const rows = customers.map(c => [
+      c.name || '',
+      c.mobile,
+      new Date(c.created_at).toLocaleDateString(),
+      c.is_active ? 'Active' : 'Inactive'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `customers_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   const addTier = async () => { const last = tiers[tiers.length - 1]; const min = last ? last.max_km : 0; const max = min + 2; const price = last ? last.price + 10 : 10; await supabase.from('delivery_tiers').insert({ min_km: min, max_km: max, price }); fetchData(); };
   const deleteTier = async (id: string) => { if (tiers.length <= 1) return alert('Ek tier toh hona chahiye!'); await supabase.from('delivery_tiers').delete().eq('id', id); fetchData(); };
