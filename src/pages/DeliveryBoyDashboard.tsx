@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import OtpFlow from '../components/OtpFlow';
+import OtpFlow from '../components/OtpFlow'; // ✅ Imported
 
 const DeliveryBoyDashboard = () => {
-  const [step, setStep] = useState(1);
+  // ✅ Saare unused states hata diye (step, otp, error, loading, setStep, setOtp, setError, setLoading)
   const [mobile, setMobile] = useState('');
-  const [otp, setOtp] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [boyId, setBoyId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -18,13 +15,11 @@ const DeliveryBoyDashboard = () => {
     :root{
       --green-900:#0b2e22; --green-800:#0f3d2c; --green-700:#155e3e; --green-600:#1a7a4c;
       --green-500:#22a35f; --green-400:#34c777; --green-100:#e7f6ec;
-      --orange:#f59e0b; --blue:#3b82f6;
       --ink:#14251d; --sub:#6b7c74; --line:#e7ede9;
       --card:#ffffff; --bg:#f4f8f5;
     }
-    *{box-sizing:border-box;}
     .db-wrap{font-family:'Inter',sans-serif; color:var(--ink); background:#eef1ee; min-height:100vh; display:flex; justify-content:center;}
-    .db-phone{width:100%; max-width:430px; background:var(--bg); height:100vh; position:relative; overflow-y:auto; box-shadow:0 0 20px rgba(0,0,0,0.1);}
+    .db-phone{width:100%; max-width:430px; background:var(--bg); height:100vh; position:relative; overflow-y:auto;}
     .db-header{background:linear-gradient(160deg, var(--green-700), var(--green-900) 75%); padding:16px 18px 46px; color:#fff;}
     .db-hdr-top{display:flex; align-items:center; gap:11px; margin-bottom:20px;}
     .db-logo{width:46px;height:46px;border-radius:50%; border:2px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font-size:20px; background:rgba(255,255,255,.08);}
@@ -60,10 +55,8 @@ const DeliveryBoyDashboard = () => {
     .sheet-btn-row{display:flex; gap:10px; margin-top:16px;}
     .sf-accept{flex:1; background:linear-gradient(135deg, var(--green-500), var(--green-700)); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
     .sf-decline{flex:1; background:#fdecec; color:#dc2626; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
-    .login-wrap{max-width:400px; margin:50px auto; text-align:center; padding:20px; background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1);}
   `;
 
-  // Ye sab purana logic hata diya, ab OtpFlow use hoga
   const fetchOrders = async (id: string) => {
     const { data } = await supabase.from('orders').select('*').eq('delivery_boy_id', id).order('created_at', { ascending: false });
     if (data) setOrders(data);
@@ -75,7 +68,7 @@ const DeliveryBoyDashboard = () => {
     setSelectedOrder(null);
   };
 
-  // Agar logged in nahi hai, toh OtpFlow dikhao (Green theme)
+  // Agar login nahi hai, toh OtpFlow dikhao
   if (!isLoggedIn) {
     return (
       <div style={{ background: '#0b2e22', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -84,7 +77,7 @@ const DeliveryBoyDashboard = () => {
           theme="green" 
           requiresName={false} 
           onLogin={async (user) => {
-            // Login success -> fetch delivery boy data
+            setMobile(user.mobile); // ✅ Mobile yahan set hoga
             const { data: boyData } = await supabase.from('delivery_boys').select('*').eq('mobile', user.mobile).single();
             if (boyData) {
               setBoyId(boyData.id);
@@ -118,7 +111,7 @@ const DeliveryBoyDashboard = () => {
           <div className="db-profile">
             <div className="db-avatar">🧑‍✈️</div>
             <div style={{ flex: 1 }}>
-              <div className="db-prof-name">+91 {mobile || "Delivery Boy"}</div>
+              <div className="db-prof-name">+91 {mobile}</div>
               <div className="db-prof-sub">Online • Delivering Happiness</div>
             </div>
             <div className="db-status"><div className="db-dot"></div>Online</div>
