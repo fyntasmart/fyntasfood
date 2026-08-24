@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
 const CustomerOrders = () => {
@@ -8,7 +8,6 @@ const CustomerOrders = () => {
   const [searched, setSearched] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // Orders fetch karo
   const fetchOrders = async () => {
     if (!mobile || mobile.length !== 10) return alert('Sahi 10-digit mobile number daalo!');
     setLoading(true);
@@ -28,7 +27,6 @@ const CustomerOrders = () => {
     setLoading(false);
   };
 
-  // Status Color Logic
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return { bg: '#fee2e2', color: '#dc2626', label: 'Pending' };
@@ -43,7 +41,6 @@ const CustomerOrders = () => {
     <div style={{ padding: '20px', background: '#ffffff', minHeight: '100vh' }}>
       <h2 style={{ color: '#111827', marginBottom: '20px' }}>My Orders</h2>
 
-      {/* Mobile Input */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input 
           type="text" 
@@ -60,7 +57,6 @@ const CustomerOrders = () => {
         </button>
       </div>
 
-      {/* Order List */}
       {loading && <p style={{ color: '#666' }}>Loading orders...</p>}
       
       {searched && !loading && orders.length === 0 && (
@@ -88,7 +84,6 @@ const CustomerOrders = () => {
         );
       })}
 
-      {/* Order Details Modal (Click karne par) */}
       {selectedOrder && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedOrder(null)}>
           <div style={{ background: '#fff', borderRadius: '15px', padding: '20px', maxWidth: '350px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
@@ -96,11 +91,11 @@ const CustomerOrders = () => {
               <h3 style={{ margin: 0, color: '#111827' }}>Order Details</h3>
               <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#111827' }}>✕</button>
             </div>
-            <div className="detail-row" style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Name</span><span style={{ fontWeight: 'bold', color: '#111827' }}>{selectedOrder.customer_name}</span></div>
-            <div className="detail-row" style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Address</span><span style={{ fontWeight: 'bold', color: '#111827' }}>{selectedOrder.address}</span></div>
-            <div className="detail-row" style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Delivery Charge</span><span style={{ fontWeight: 'bold', color: '#111827' }}>₹{selectedOrder.delivery_charge}</span></div>
-            <div className="detail-row" style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Total</span><span style={{ fontWeight: 'bold', color: '#1e40af' }}>₹{selectedOrder.total_amount}</span></div>
-            <div className="detail-row"><span style={{ color: '#666' }}>Status</span><span style={{ fontWeight: 'bold', color: '#059669' }}>{selectedOrder.status}</span></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Name: </span><span style={{ fontWeight: 'bold', color: '#111827' }}>{selectedOrder.customer_name}</span></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Address: </span><span style={{ fontWeight: 'bold', color: '#111827' }}>{selectedOrder.address}</span></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Delivery Charge: </span><span style={{ fontWeight: 'bold', color: '#111827' }}>₹{selectedOrder.delivery_charge}</span></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Total: </span><span style={{ fontWeight: 'bold', color: '#1e40af' }}>₹{selectedOrder.total_amount}</span></div>
+            <div><span style={{ color: '#666' }}>Status: </span><span style={{ fontWeight: 'bold', color: '#059669' }}>{selectedOrder.status}</span></div>
           </div>
         </div>
       )}
