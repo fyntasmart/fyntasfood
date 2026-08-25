@@ -43,6 +43,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [branchStock, setBranchStock] = useState<BranchStock[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
 
+  // 🔥 Toast Popup States (Stock update ke liye)
+  const [toast, setToast] = useState('');
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000); // 2 second baad hide
+  };
+
   // Modal & Menu States
   const [selectedOrderForView, setSelectedOrderForView] = useState<Order | null>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
@@ -125,13 +132,40 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (inv.data) setInvoiceSettings(inv.data);
   };
 
+  // 🔴 Realtime Subscriptions
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Auto-Refresh
-    return () => clearInterval(interval);
-  }, []);
 
-  // Close 3-dot menu on outside click
+    const ordersChannel = supabase
+      .channel('admin-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .subscribe();
+
+    const boysChannel = supabase
+      .channel('admin-boys-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_boys' }, () => fetchData())
+      .subscribe();
+
+    const productsChannel = supabase
+      .channel('admin-products-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
+      .subscribe();
+
+    const stockChannel = supabase
+      .channel('admin-stock-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_stock' }, () => {
+        if (selectedBranchForStock) fetchBranchStock(selectedBranchForStock);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(boysChannel);
+      supabase.removeChannel(productsChannel);
+      supabase.removeChannel(stockChannel);
+    };
+  }, [selectedBranchForStock]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -141,20 +175,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Realtime subscription for branch stock
-  useEffect(() => {
-    if (!selectedBranchForStock) return;
-    const channel = supabase
-      .channel('branch-stock-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_stock' }, () => {
-        fetchBranchStock(selectedBranchForStock);
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedBranchForStock]);
 
   const uploadImage = async (file: File) => {
     const path = `${Date.now()}_${file.name}`;
@@ -174,6 +194,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (data) setBranchStock(data);
   };
 
+  // 🔥 Stock Update with Save Button + Toast
   const updateBranchStock = async (branchStockId: string, newStock: number) => {
     const { error } = await supabase
       .from('branch_stock')
@@ -181,7 +202,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       .eq('id', branchStockId);
     if (!error) {
       setBranchStock(prev => prev.map(item => item.id === branchStockId ? { ...item, stock: newStock } : item));
-      alert('Stock updated!');
+      showToast('✅ Stock Updated!'); // Popup dikhao
+    } else {
+      showToast('❌ Error updating stock!');
     }
   };
 
@@ -481,6 +504,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
+        {/* 🔥 Toast Popup - Stock Update */}
+        {toast && (
+          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: '#111111', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+            {toast}
+          </div>
+        )}
+
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -561,7 +591,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Inventory Tab (Branch Stock Management) */}
+        {/* Inventory Tab - Stock Update with Save Button */}
         {activeTab === 'inventory' && (
           <div className="panel">
             <h3>Branch Stock Management</h3>
@@ -587,7 +617,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             {selectedBranchForStock && (
               <table>
                 <thead>
-                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th></tr>
+                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                   {branchStock.filter(item => (item.products?.name || '').toLowerCase().includes(inventorySearch.toLowerCase())).map(item => (
@@ -601,9 +631,21 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                         <input 
                           type="number" 
                           defaultValue={item.stock} 
-                          onBlur={(e) => updateBranchStock(item.id, parseFloat(e.target.value))}
+                          id={`stock-${item.id}`}
                           style={{ width: '80px' }}
                         />
+                      </td>
+                      <td>
+                        {/* 🔥 Save Button */}
+                        <button 
+                          className="btn btn-black" 
+                          style={{ padding: '5px 10px', fontSize: '12px' }}
+                          onClick={() => {
+                            const input = document.getElementById(`stock-${item.id}`) as HTMLInputElement;
+                            const newStock = parseFloat(input.value);
+                            updateBranchStock(item.id, newStock);
+                          }}
+                        >Save</button>
                       </td>
                     </tr>
                   ))}
