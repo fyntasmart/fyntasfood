@@ -98,7 +98,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
   const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
-  // Fetch all data
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages, inv] = await Promise.all([
       supabase.from('branches').select('*'),
@@ -152,7 +151,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         fetchBranchStock(selectedBranchForStock);
       })
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedBranchForStock]);
 
   const uploadImage = async (file: File) => {
@@ -411,7 +412,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'inventory', label: 'Inventory', icon: '📦' }, // Inventory tab
+    { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'products', label: 'Products', icon: '📁' },
     { id: 'categories', label: 'Categories', icon: '🗂️' },
     { id: 'customers', label: 'Customers', icon: '👥' },
