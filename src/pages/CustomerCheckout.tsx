@@ -25,7 +25,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
   const [userLng, setUserLng] = useState<number | null>(null);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true);
 
-  const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi'); // Razorpay removed
+  const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi');
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [tempOrderId, setTempOrderId] = useState('');
 
@@ -97,7 +97,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + orderRef)}`;
   };
 
-  // 🔥 Order Place karne ka main function (UPI payment success ke baad)
   const handlePlaceOrder = async (paymentStatus: string, paymentMethod: string, paymentId: string | null) => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
@@ -120,8 +119,13 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       const { data: order, error: orderError } = await supabase.from('orders').insert(orderData).select().single();
       if (orderError) throw orderError;
 
+      // ✅ FIX: unit_price add kiya
       const orderItems = cart.map((item: any) => ({
-        order_id: order.id, product_id: item.id, quantity: item.qty, price: item.price
+        order_id: order.id, 
+        product_id: item.id, 
+        quantity: item.qty, 
+        price: item.price,
+        unit_price: item.price
       }));
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) throw itemsError;
@@ -135,13 +139,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     }
   };
 
-  // UPI Modal kholna
   const handlePayButton = () => {
     const tempId = Math.floor(100000 + Math.random() * 900000).toString();
     setTempOrderId(tempId); setShowUpiModal(true);
   };
 
-  // UPI Payment complete hone ke baad "Proceed to Order" click
   const handleUpiConfirm = () => {
     setShowUpiModal(false);
     handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
