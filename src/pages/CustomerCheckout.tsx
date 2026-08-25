@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import QRCode from 'react-qr-code';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 
-const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
-  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP, 3: Details
+const icon = L.icon({ iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png", iconSize: [25, 41], iconAnchor: [12, 41] });
+
+const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: any) => {
+  const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -16,6 +21,10 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [tiers, setTiers] = useState<any[]>([]);
   
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(true);
+
   const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi');
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [tempOrderId, setTempOrderId] = useState('');
@@ -23,12 +32,24 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
 
+  // 🔥 Agar user पहले से logged in है, तो login step skip करो
+  useEffect(() => {
+    if (isLoggedIn && savedMobile) {
+      setMobile(savedMobile);
+      setStep(3); // Seedha details page par
+    }
+  }, [isLoggedIn, savedMobile]);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: b } = await supabase.from('branches').select('*').eq('is_active', true);
       const { data: t } = await supabase.from('delivery_tiers').select('*').order('max_km');
       if (b) setBranches(b);
       if (t) setTiers(t);
+      
+      setUserLat(27.2150);
+      setUserLng(77.3350);
+      setAddress("PGHV+65Q, Malmalija, Uttar Pradesh 273002");
     };
     fetchData();
   }, []);
@@ -42,19 +63,12 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
 
   const totalAmount = cart.reduce((sum: number, item: any) => sum + (item.price * item.qty), 0) + deliveryCharge;
 
-  // ✅ FIX: Exact Error dikhane ke liye
   const sendOtp = async () => {
     if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
     setLoading(true); setError('');
-
     const { data, error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
-    
-    if (error) {
-      setError('OTP error: ' + (data?.error || error.message || 'Unknown error'));
-    } else {
-      setStep(2);
-      alert('OTP bhej diya gaya hai!');
-    }
+    if (error) setError('OTP error: ' + (data?.error || error.message || 'Unknown error'));
+    else { setStep(2); alert('OTP bhej diya gaya hai!'); }
     setLoading(false);
   };
 
@@ -64,6 +78,27 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
     if (error || !data?.success) setError('Galat OTP! Dobara try karo.');
     else { setStep(3); }
     setLoading(false);
+  };
+
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLat(latitude);
+          setUserLng(longitude);
+          setAddress(`My Current Location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+          setUseCurrentLocation(true);
+        },
+        () => {
+          alert("Location permission nahi mili. Address manually likhein.");
+          setUseCurrentLocation(false);
+        }
+      );
+    } else {
+      alert("Geolocation supported nahi hai.");
+      setUseCurrentLocation(false);
+    }
   };
 
   const generateUpiLink = (amount: number, orderRef: string) => {
@@ -135,9 +170,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
             <p style={{ color: '#666' }}>Order karne ke liye apna mobile number daalo</p>
             <input type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px' }} />
             {error && <p style={{ color: 'red', wordBreak: 'break-word' }}>{error}</p>}
-            <button onClick={sendOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {loading ? 'Sending...' : 'Send OTP'}
-            </button>
+            <button onClick={sendOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>{loading ? 'Sending...' : 'Send OTP'}</button>
           </div>
         )}
 
@@ -147,9 +180,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
             <p style={{ color: '#666' }}>Mobile {mobile} par bheja gaya OTP daalo</p>
             <input type="text" placeholder="4-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={4} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px', textAlign: 'center', fontSize: '20px' }} />
             {error && <p style={{ color: 'red' }}>{error}</p>}
-            <button onClick={verifyOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {loading ? 'Verifying...' : 'Verify OTP'}
-            </button>
+            <button onClick={verifyOtp} disabled={loading} style={{ width: '100%', padding: '15px', background: '#1e40af', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>{loading ? 'Verifying...' : 'Verify OTP'}</button>
             <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#666', marginTop: '10px', cursor: 'pointer' }}>Change Number</button>
           </div>
         )}
@@ -165,9 +196,35 @@ const CustomerCheckout = ({ cart, onSuccess, onBack }: any) => {
             </div>
 
             <div style={{ border: '1px solid #e5e7eb', borderRadius: '10px', padding: '15px', marginBottom: '20px' }}>
-              <h3 style={{ color: '#111827' }}>Delivery Details</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ color: '#111827', margin: 0 }}>Delivery To -</h3>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={getCurrentLocation} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>📍 Use My Location</button>
+                  <button onClick={() => setUseCurrentLocation(!useCurrentLocation)} style={{ background: 'none', border: 'none', color: '#1e40af', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}>+ Change</button>
+                </div>
+              </div>
+
+              {useCurrentLocation ? (
+                <div style={{ marginBottom: '15px' }}>
+                  <MapContainer center={[userLat || 27.215, userLng || 77.335]} zoom={13} scrollWheelZoom={false} style={{ height: '200px', width: '100%', borderRadius: '10px', zIndex: 0 }}>
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {userLat && userLng && (
+                      <Marker position={[userLat, userLng]} icon={icon}>
+                        <Popup>Your Location</Popup>
+                      </Marker>
+                    )}
+                  </MapContainer>
+                  <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>Current Location use ho rahi hai. Neeche manually bhi edit kar sakte hain.</p>
+                </div>
+              ) : (
+                <p style={{ fontSize: '12px', color: '#666', marginBottom: '15px' }}>Manual Address mode ON hai. Neeche address likhein.</p>
+              )}
+
               <input placeholder="Aapka Naam (Must)" value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
-              <textarea placeholder="Pura Address" value={address} onChange={(e) => setAddress(e.target.value)} rows={2} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
+              <textarea placeholder="Pura Address (Yahan click karke manually edit kar sakte hain)" value={address} onChange={(e) => { setAddress(e.target.value); setUseCurrentLocation(false); }} rows={2} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
             </div>
 
             <div style={{ marginBottom: '15px' }}>
