@@ -32,6 +32,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [appPages, setAppPages] = useState<AppPage[]>([]);
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
 
+  // 🔥 Toast State
+  const [toast, setToast] = useState('');
+
   // Order Management States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -42,13 +45,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [selectedBranchForStock, setSelectedBranchForStock] = useState('');
   const [branchStock, setBranchStock] = useState<BranchStock[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
-
-  // 🔥 Toast Popup States (Stock update ke liye)
-  const [toast, setToast] = useState('');
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2000); // 2 second baad hide
-  };
+  const [stockValues, setStockValues] = useState<{[key: string]: number}>({});
 
   // Modal & Menu States
   const [selectedOrderForView, setSelectedOrderForView] = useState<Order | null>(null);
@@ -105,6 +102,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
   const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2000);
+  };
+
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages, inv] = await Promise.all([
       supabase.from('branches').select('*'),
@@ -132,7 +134,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (inv.data) setInvoiceSettings(inv.data);
   };
 
-  // 🔴 Realtime Subscriptions
+  // Realtime Subscriptions
   useEffect(() => {
     fetchData();
 
@@ -166,6 +168,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     };
   }, [selectedBranchForStock]);
 
+  // Close 3-dot menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -194,7 +197,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (data) setBranchStock(data);
   };
 
-  // 🔥 Stock Update with Save Button + Toast
   const updateBranchStock = async (branchStockId: string, newStock: number) => {
     const { error } = await supabase
       .from('branch_stock')
@@ -202,9 +204,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       .eq('id', branchStockId);
     if (!error) {
       setBranchStock(prev => prev.map(item => item.id === branchStockId ? { ...item, stock: newStock } : item));
-      showToast('✅ Stock Updated!'); // Popup dikhao
+      showToast('Stock Updated! ✅');
     } else {
-      showToast('❌ Error updating stock!');
+      showToast('Error updating stock');
     }
   };
 
@@ -246,11 +248,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (editingProductFull) {
       const { error } = await supabase.from('products').update(productData).eq('id', editingProductFull.id);
       if (error) { alert('Product update nahi hua: ' + error.message); return; }
-      alert('Product Updated!');
+      showToast('Product Updated! ✅');
     } else {
       const { error } = await supabase.from('products').insert(productData);
       if (error) { alert('Product add nahi hua: ' + error.message); return; }
-      alert('Product Added!');
+      showToast('Product Added! ✅');
     }
     handleCancelEditProduct(); fetchData();
   };
@@ -493,6 +495,24 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .menu-wrapper { position: relative; display: inline-block; }
       `}</style>
 
+      {/* 🔥 Toast Popup */}
+      {toast && (
+        <div style={{ 
+          position: 'fixed', 
+          top: '20px', 
+          right: '20px', 
+          background: '#111111', 
+          color: '#fff', 
+          padding: '10px 20px', 
+          borderRadius: '8px', 
+          zIndex: 999, 
+          fontWeight: 'bold',
+          boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+        }}>
+          {toast}
+        </div>
+      )}
+
       <div className="sidebar">
         <h2 style={{ marginBottom: '30px', color: '#111111' }}>FYNTAS Admin</h2>
         {tabs.map(tab => (
@@ -504,13 +524,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
-        {/* 🔥 Toast Popup - Stock Update */}
-        {toast && (
-          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: '#111111', color: '#fff', padding: '12px 20px', borderRadius: '8px', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-            {toast}
-          </div>
-        )}
-
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -591,7 +604,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Inventory Tab - Stock Update with Save Button */}
+        {/* Inventory Tab */}
         {activeTab === 'inventory' && (
           <div className="panel">
             <h3>Branch Stock Management</h3>
@@ -617,7 +630,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
             {selectedBranchForStock && (
               <table>
                 <thead>
-                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th><th>Action</th></tr>
+                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th></tr>
                 </thead>
                 <tbody>
                   {branchStock.filter(item => (item.products?.name || '').toLowerCase().includes(inventorySearch.toLowerCase())).map(item => (
@@ -628,24 +641,22 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
                       <td>{item.products?.unit}</td>
                       <td>{item.stock}</td>
                       <td>
-                        <input 
-                          type="number" 
-                          defaultValue={item.stock} 
-                          id={`stock-${item.id}`}
-                          style={{ width: '80px' }}
-                        />
-                      </td>
-                      <td>
-                        {/* 🔥 Save Button */}
-                        <button 
-                          className="btn btn-black" 
-                          style={{ padding: '5px 10px', fontSize: '12px' }}
-                          onClick={() => {
-                            const input = document.getElementById(`stock-${item.id}`) as HTMLInputElement;
-                            const newStock = parseFloat(input.value);
-                            updateBranchStock(item.id, newStock);
-                          }}
-                        >Save</button>
+                        {/* 🔥 Save Button ke saath */}
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          <input 
+                            type="number" 
+                            value={stockValues[item.id] ?? item.stock} 
+                            onChange={(e) => setStockValues(prev => ({ ...prev, [item.id]: parseFloat(e.target.value) }))}
+                            style={{ width: '80px' }}
+                          />
+                          <button 
+                            className="btn btn-green" 
+                            style={{ padding: '5px 10px', fontSize: '12px' }}
+                            onClick={() => updateBranchStock(item.id, stockValues[item.id] ?? item.stock)}
+                          >
+                            Save
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
