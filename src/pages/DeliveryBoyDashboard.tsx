@@ -1,25 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import OtpFlow from '../components/OtpFlow'; // ✅ Imported
 
 const DeliveryBoyDashboard = () => {
-  // ✅ Saare unused states hata diye (step, otp, error, loading, setStep, setOtp, setError, setLoading)
+  const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState('');
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [boyId, setBoyId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
+  // Green Theme CSS (Reference se exact)
   const styles = `
     :root{
       --green-900:#0b2e22; --green-800:#0f3d2c; --green-700:#155e3e; --green-600:#1a7a4c;
       --green-500:#22a35f; --green-400:#34c777; --green-100:#e7f6ec;
+      --orange:#f59e0b; --blue:#3b82f6;
       --ink:#14251d; --sub:#6b7c74; --line:#e7ede9;
       --card:#ffffff; --bg:#f4f8f5;
     }
+    *{box-sizing:border-box;}
     .db-wrap{font-family:'Inter',sans-serif; color:var(--ink); background:#eef1ee; min-height:100vh; display:flex; justify-content:center;}
-    .db-phone{width:100%; max-width:430px; background:var(--bg); height:100vh; position:relative; overflow-y:auto;}
+    .db-phone{width:100%; max-width:430px; background:var(--bg); height:100vh; position:relative; overflow-y:auto; box-shadow:0 0 20px rgba(0,0,0,0.1);}
     .db-header{background:linear-gradient(160deg, var(--green-700), var(--green-900) 75%); padding:16px 18px 46px; color:#fff;}
     .db-hdr-top{display:flex; align-items:center; gap:11px; margin-bottom:20px;}
     .db-logo{width:46px;height:46px;border-radius:50%; border:2px solid rgba(255,255,255,.5); display:flex; align-items:center; justify-content:center; font-size:20px; background:rgba(255,255,255,.08);}
@@ -55,7 +60,32 @@ const DeliveryBoyDashboard = () => {
     .sheet-btn-row{display:flex; gap:10px; margin-top:16px;}
     .sf-accept{flex:1; background:linear-gradient(135deg, var(--green-500), var(--green-700)); color:#fff; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
     .sf-decline{flex:1; background:#fdecec; color:#dc2626; border:none; border-radius:12px; padding:12px; font-weight:700; cursor:pointer;}
+    .login-wrap{max-width:400px; margin:50px auto; text-align:center; padding:20px; background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1);}
+    .login-input{width:100%; padding:12px; margin-bottom:10px; border:1px solid var(--line); border-radius:8px;}
+    .login-btn{width:100%; padding:15px; background:var(--green-600); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;}
   `;
+
+  // Login Logic
+  const sendOtp = async () => {
+    if (mobile.length !== 10) return setError('Sahi 10-digit mobile number daalo!');
+    setLoading(true); setError('');
+    const { data, error } = await supabase.functions.invoke('send-otp', { body: { mobile } });
+    if (error) setError('OTP error: ' + (data?.error || error.message));
+    else { setStep(2); alert('OTP bhej diya gaya hai!'); }
+    setLoading(false);
+  };
+
+  const verifyOtp = async () => {
+    setLoading(true); setError('');
+    const { data, error } = await supabase.functions.invoke('verify-otp', { body: { mobile, code: otp } });
+    if (error || !data?.success) setError('Galat OTP!');
+    else if (data.role !== 'delivery_boy') setError('Yeh number Delivery Boy ke liye register nahi hai!');
+    else {
+      const { data: boyData } = await supabase.from('delivery_boys').select('*').eq('mobile', mobile).single();
+      if (boyData) { setBoyId(boyData.id); setIsLoggedIn(true); fetchOrders(boyData.id); }
+    }
+    setLoading(false);
+  };
 
   const fetchOrders = async (id: string) => {
     const { data } = await supabase.from('orders').select('*').eq('delivery_boy_id', id).order('created_at', { ascending: false });
@@ -66,26 +96,53 @@ const DeliveryBoyDashboard = () => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     if (boyId) fetchOrders(boyId);
     setSelectedOrder(null);
+    alert('Status Updated!');
   };
 
-  // Agar login nahi hai, toh OtpFlow dikhao
+  // 🔴 Realtime Subscription - Admin order change karega toh turant update hoga
+  useEffect(() => {
+    if (!boyId) return;
+
+    const channel = supabase
+      .channel('boy-orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          fetchOrders(boyId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boyId]);
+
   if (!isLoggedIn) {
     return (
       <div style={{ background: '#0b2e22', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <style>{styles}</style>
-        <OtpFlow 
-          theme="green" 
-          requiresName={false} 
-          onLogin={async (user) => {
-            setMobile(user.mobile); // ✅ Mobile yahan set hoga
-            const { data: boyData } = await supabase.from('delivery_boys').select('*').eq('mobile', user.mobile).single();
-            if (boyData) {
-              setBoyId(boyData.id);
-              setIsLoggedIn(true);
-              fetchOrders(boyData.id);
-            }
-          }} 
-        />
+        <div className="login-wrap">
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🛵</div>
+          <h2 style={{ color: 'var(--green-700)' }}>Delivery Boy Login</h2>
+          {step === 1 ? (
+            <>
+              <p style={{ color: 'var(--sub)' }}>Registered mobile number daalo</p>
+              <input className="login-input" type="text" placeholder="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+              {error && <p style={{ color: 'red' }}>{error}</p>}
+              <button className="login-btn" onClick={sendOtp} disabled={loading}>{loading ? 'Sending...' : 'Send OTP'}</button>
+            </>
+          ) : (
+            <>
+              <p style={{ color: 'var(--sub)' }}>OTP daalo</p>
+              <input className="login-input" type="text" placeholder="4-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={4} />
+              {error && <p style={{ color: 'red' }}>{error}</p>}
+              <button className="login-btn" onClick={verifyOtp} disabled={loading}>{loading ? 'Verifying...' : 'Verify OTP'}</button>
+              <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: 'var(--sub)', marginTop: '10px', cursor: 'pointer' }}>Change Number</button>
+            </>
+          )}
+        </div>
       </div>
     );
   }
