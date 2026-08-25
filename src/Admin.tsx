@@ -13,6 +13,7 @@ interface Customer { id: string; name: string; mobile: string; created_at: strin
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
 interface InvoiceSettings { id: string; welcome_note: string; terms: string; footer: string; }
+interface BranchStock { id: string; branch_id: string; product_id: string; stock: number; updated_at: string; products?: { name: string; sku: string; price: number; unit: string; } }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -37,7 +38,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
-  // Inventory States
+  // Inventory / Branch Stock States
+  const [selectedBranchForStock, setSelectedBranchForStock] = useState('');
+  const [branchStock, setBranchStock] = useState<BranchStock[]>([]);
   const [inventorySearch, setInventorySearch] = useState('');
 
   // Modal & Menu States
@@ -95,6 +98,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
   const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
+  // Fetch all data
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages, inv] = await Promise.all([
       supabase.from('branches').select('*'),
@@ -128,6 +132,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Close 3-dot menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -138,12 +143,45 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Realtime subscription for branch stock
+  useEffect(() => {
+    if (!selectedBranchForStock) return;
+    const channel = supabase
+      .channel('branch-stock-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_stock' }, () => {
+        fetchBranchStock(selectedBranchForStock);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [selectedBranchForStock]);
+
   const uploadImage = async (file: File) => {
     const path = `${Date.now()}_${file.name}`;
     const { error } = await supabase.storage.from('product-images').upload(path, file);
     if (error) return '';
     const { data } = supabase.storage.from('product-images').getPublicUrl(path);
     return data.publicUrl;
+  };
+
+  // ---- Branch Stock Functions ----
+  const fetchBranchStock = async (branchId: string) => {
+    if (!branchId) return;
+    const { data } = await supabase
+      .from('branch_stock')
+      .select('*, products(name, sku, price, unit)')
+      .eq('branch_id', branchId);
+    if (data) setBranchStock(data);
+  };
+
+  const updateBranchStock = async (branchStockId: string, newStock: number) => {
+    const { error } = await supabase
+      .from('branch_stock')
+      .update({ stock: newStock, updated_at: new Date() })
+      .eq('id', branchStockId);
+    if (!error) {
+      setBranchStock(prev => prev.map(item => item.id === branchStockId ? { ...item, stock: newStock } : item));
+      alert('Stock updated!');
+    }
   };
 
   // ---- Product Functions ----
@@ -292,13 +330,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setOpenOrderMenuId(null); fetchData();
   };
 
-  // ---- Inventory Management ----
-  const updateStock = async (productId: string, newStock: number) => {
-    await supabase.from('products').update({ stock: newStock }).eq('id', productId);
-    fetchData();
-    alert('Stock updated!');
-  };
-
   // ---- Pagination & Filter Logic ----
   const filteredOrders = orders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
@@ -379,8 +410,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'orders', label: 'Orders', icon: '📋' },
-    { id: 'inventory', label: 'Inventory', icon: '📦' }, // Inventory tab add!
+    { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'inventory', label: 'Inventory', icon: '📦' }, // Inventory tab
     { id: 'products', label: 'Products', icon: '📁' },
     { id: 'categories', label: 'Categories', icon: '🗂️' },
     { id: 'customers', label: 'Customers', icon: '👥' },
@@ -529,29 +560,57 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Inventory Tab (NEW!) */}
+        {/* Inventory Tab (Branch Stock Management) */}
         {activeTab === 'inventory' && (
           <div className="panel">
-            <div className="table-controls">
-              <h3 style={{ margin: 0 }}>Inventory Management</h3>
-              <input type="text" placeholder="Search products..." value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} style={{ maxWidth: '200px' }} />
+            <h3>Branch Stock Management</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label>Select Branch:</label>
+              <select 
+                value={selectedBranchForStock} 
+                onChange={(e) => { setSelectedBranchForStock(e.target.value); fetchBranchStock(e.target.value); }}
+                style={{ marginTop: '5px', padding: '10px', width: '200px' }}
+              >
+                <option value="">-- Choose Branch --</option>
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
             </div>
-            <table>
-              <thead><tr><th>Product</th><th>SKU</th><th>Price</th><th>Current Stock</th><th>Update Stock</th></tr></thead>
-              <tbody>
-                {products.filter(p => p.name.toLowerCase().includes(inventorySearch.toLowerCase())).map(p => (
-                  <tr key={p.id}>
-                    <td>{p.name}</td>
-                    <td>{p.sku}</td>
-                    <td>₹{p.price}</td>
-                    <td>{p.stock}</td>
-                    <td>
-                      <input type="number" defaultValue={p.stock} onBlur={(e) => updateStock(p.id, parseFloat(e.target.value))} style={{ width: '80px' }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+            {selectedBranchForStock && (
+              <div style={{ marginBottom: '10px' }}>
+                <input type="text" placeholder="Search products..." value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} style={{ maxWidth: '200px' }} />
+              </div>
+            )}
+
+            {selectedBranchForStock && (
+              <table>
+                <thead>
+                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th></tr>
+                </thead>
+                <tbody>
+                  {branchStock.filter(item => (item.products?.name || '').toLowerCase().includes(inventorySearch.toLowerCase())).map(item => (
+                    <tr key={item.id}>
+                      <td>{item.products?.name || 'Unknown'}</td>
+                      <td>{item.products?.sku}</td>
+                      <td>₹{item.products?.price}</td>
+                      <td>{item.products?.unit}</td>
+                      <td>{item.stock}</td>
+                      <td>
+                        <input 
+                          type="number" 
+                          defaultValue={item.stock} 
+                          onBlur={(e) => updateBranchStock(item.id, parseFloat(e.target.value))}
+                          style={{ width: '80px' }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            
+            {!selectedBranchForStock && <p style={{ color: '#666' }}>Branch select karein.</p>}
           </div>
         )}
 
