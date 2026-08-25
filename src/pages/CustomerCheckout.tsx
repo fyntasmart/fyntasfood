@@ -97,6 +97,16 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + orderRef)}`;
   };
 
+  const handleUpiConfirm = () => {
+    setShowUpiModal(false);
+    handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
+  };
+
+  const handleCodButton = () => {
+    handlePlaceOrder('pending', 'cod', null);
+  };
+
+  // Main Order Place Function (with unit_price fix)
   const handlePlaceOrder = async (paymentStatus: string, paymentMethod: string, paymentId: string | null) => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
@@ -119,13 +129,12 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       const { data: order, error: orderError } = await supabase.from('orders').insert(orderData).select().single();
       if (orderError) throw orderError;
 
-      // ✅ FIX: unit_price add kiya
       const orderItems = cart.map((item: any) => ({
         order_id: order.id, 
         product_id: item.id, 
         quantity: item.qty, 
         price: item.price,
-        unit_price: item.price
+        unit_price: item.price // ✅ FIX: unit_price add kiya
       }));
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) throw itemsError;
@@ -142,15 +151,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
   const handlePayButton = () => {
     const tempId = Math.floor(100000 + Math.random() * 900000).toString();
     setTempOrderId(tempId); setShowUpiModal(true);
-  };
-
-  const handleUpiConfirm = () => {
-    setShowUpiModal(false);
-    handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
-  };
-
-  const handleCodButton = () => {
-    handlePlaceOrder('pending', 'cod', null);
   };
 
   return (
@@ -252,8 +252,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
             </div>
             <p style={{ fontSize: '12px', color: '#666' }}>UPI App se payment karne ke baad wapas aayein</p>
             <a href={generateUpiLink(totalAmount, tempOrderId)} style={{ display: 'block', width: '100%', padding: '12px', background: '#059669', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', marginBottom: '10px', boxSizing: 'border-box' }}>📱 Open UPI App</a>
-            
-            {/* I have paid removed! User yahan Proceed to Order dabayega */}
             <button onClick={handleUpiConfirm} style={{ width: '100%', padding: '12px', background: '#111111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Proceed to Order</button>
             <button onClick={() => setShowUpiModal(false)} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', marginTop: '10px' }}>Cancel</button>
           </div>
