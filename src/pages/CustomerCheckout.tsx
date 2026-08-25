@@ -5,9 +5,15 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
+// 🔥 TypeScript ko batayein ki Razorpay window mein exist karta hai
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 const icon = L.icon({ iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png", iconSize: [25, 41], iconAnchor: [12, 41] });
 
-// 🔥 Razorpay API Key (Public Key)
 const RAZORPAY_KEY_ID = 'rzp_live_TU5CXRkM3NXLkk';
 
 const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: any) => {
@@ -35,7 +41,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
 
-  // 🔥 Razorpay Script Load Logic (React 19 compatible)
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -46,7 +51,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     };
   }, []);
 
-  // Agar user logged in hai, toh Step 3 par le jao
   useEffect(() => {
     if (isLoggedIn && savedMobile) {
       setMobile(savedMobile);
@@ -60,6 +64,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       const { data: t } = await supabase.from('delivery_tiers').select('*').order('max_km');
       if (b) setBranches(b);
       if (t) setTiers(t);
+      
       setUserLat(27.2150);
       setUserLng(77.3350);
       setAddress("PGHV+65Q, Malmalija, Uttar Pradesh 273002");
@@ -111,13 +116,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + orderRef)}`;
   };
 
-  // 🔥 Razorpay Payment Handler (Direct window.Razorpay use)
   const handleRazorpay = async () => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
 
     try {
-      // 1. Order pehle database mein save karo
       const orderData = {
         customer_id: null,
         customer_name: name,
@@ -134,7 +137,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       const { data: order, error: orderError } = await supabase.from('orders').insert(orderData).select().single();
       if (orderError) throw orderError;
 
-      // 2. Razorpay Options
       const options = {
         key: RAZORPAY_KEY_ID,
         amount: totalAmount * 100,
@@ -142,7 +144,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
         name: 'FYNTAS Food',
         description: 'Order Payment',
         handler: async (response: any) => {
-          // 3. verify-payment Edge Function call karo
           const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
             body: { 
               razorpay_order_id: response.razorpay_order_id,
@@ -158,13 +159,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
             return;
           }
 
-          // 4. Order Items save karo
           const orderItems = cart.map((item: any) => ({
             order_id: order.id, product_id: item.id, quantity: item.qty, price: item.price
           }));
           await supabase.from('order_items').insert(orderItems);
 
-          // 5. Payment success update
           await supabase.from('orders').update({ payment_status: 'paid', status: 'accepted' }).eq('id', order.id);
 
           alert('Payment Successful! Order Placed!');
@@ -174,7 +173,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
         theme: { color: '#111111' }
       };
 
-      // Razorpay Open
+      // 🔥 Yahan window.Razorpay use ho raha hai
       if (window.Razorpay) {
         const rzp = new window.Razorpay(options);
         rzp.open();
