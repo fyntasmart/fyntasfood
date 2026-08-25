@@ -37,6 +37,9 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
+  // Inventory States
+  const [inventorySearch, setInventorySearch] = useState('');
+
   // Modal & Menu States
   const [selectedOrderForView, setSelectedOrderForView] = useState<Order | null>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
@@ -289,6 +292,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setOpenOrderMenuId(null); fetchData();
   };
 
+  // ---- Inventory Management ----
+  const updateStock = async (productId: string, newStock: number) => {
+    await supabase.from('products').update({ stock: newStock }).eq('id', productId);
+    fetchData();
+    alert('Stock updated!');
+  };
+
   // ---- Pagination & Filter Logic ----
   const filteredOrders = orders.filter(order => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
@@ -368,12 +378,19 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'products', label: 'Products', icon: '📁' }, { id: 'categories', label: 'Categories', icon: '🗂️' },
-    { id: 'customers', label: 'Customers', icon: '👥' }, { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
-    { id: 'branches', label: 'Branches', icon: '🏬' }, { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' }, { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
-    { id: 'profile', label: 'My Profile', icon: '👤' }, { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'orders', label: 'Orders', icon: '📋' },
+    { id: 'inventory', label: 'Inventory', icon: '📦' }, // Inventory tab add!
+    { id: 'products', label: 'Products', icon: '📁' },
+    { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
+    { id: 'branches', label: 'Branches', icon: '🏬' },
+    { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' },
+    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
+    { id: 'profile', label: 'My Profile', icon: '👤' },
+    { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
@@ -509,6 +526,32 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <span style={{ fontSize: '13px' }}>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
               <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage < Math.ceil(filteredOrders.length / ordersPerPage) && paginate(currentPage + 1)} disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}>Next</button>
             </div>
+          </div>
+        )}
+
+        {/* Inventory Tab (NEW!) */}
+        {activeTab === 'inventory' && (
+          <div className="panel">
+            <div className="table-controls">
+              <h3 style={{ margin: 0 }}>Inventory Management</h3>
+              <input type="text" placeholder="Search products..." value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} style={{ maxWidth: '200px' }} />
+            </div>
+            <table>
+              <thead><tr><th>Product</th><th>SKU</th><th>Price</th><th>Current Stock</th><th>Update Stock</th></tr></thead>
+              <tbody>
+                {products.filter(p => p.name.toLowerCase().includes(inventorySearch.toLowerCase())).map(p => (
+                  <tr key={p.id}>
+                    <td>{p.name}</td>
+                    <td>{p.sku}</td>
+                    <td>₹{p.price}</td>
+                    <td>{p.stock}</td>
+                    <td>
+                      <input type="number" defaultValue={p.stock} onBlur={(e) => updateStock(p.id, parseFloat(e.target.value))} style={{ width: '80px' }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
