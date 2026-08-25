@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from './supabaseClient';
 
-// Interfaces
 interface Branch { id: string; name: string; address?: string; lat: number; lng: number; is_active: boolean; delivery_range_km: number; max_delivery_km: number; }
 interface Settings { id: string; base_fare: number; }
 interface Tier { id: string; min_km: number; max_km: number; price: number; }
@@ -13,7 +12,6 @@ interface Customer { id: string; name: string; mobile: string; created_at: strin
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
 interface InvoiceSettings { id: string; welcome_note: string; terms: string; footer: string; }
-interface BranchStock { id: string; branch_id: string; product_id: string; stock: number; updated_at: string; products?: { name: string; sku: string; price: number; unit: string; } }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -32,22 +30,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [appPages, setAppPages] = useState<AppPage[]>([]);
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
 
-  // 🔥 Toast State
-  const [toast, setToast] = useState('');
-
-  // Order Management States
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
-
-  // Inventory / Branch Stock States
-  const [selectedBranchForStock, setSelectedBranchForStock] = useState('');
-  const [branchStock, setBranchStock] = useState<BranchStock[]>([]);
-  const [inventorySearch, setInventorySearch] = useState('');
-  const [stockValues, setStockValues] = useState<{[key: string]: number}>({});
-
-  // Modal & Menu States
   const [selectedOrderForView, setSelectedOrderForView] = useState<Order | null>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -102,11 +88,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
   const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2000);
-  };
-
   const fetchData = async () => {
     const [b, s, t, c, p, o, d, cust, bn, pages, inv] = await Promise.all([
       supabase.from('branches').select('*'),
@@ -134,41 +115,12 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (inv.data) setInvoiceSettings(inv.data);
   };
 
-  // Realtime Subscriptions
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const ordersChannel = supabase
-      .channel('admin-orders-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
-      .subscribe();
-
-    const boysChannel = supabase
-      .channel('admin-boys-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_boys' }, () => fetchData())
-      .subscribe();
-
-    const productsChannel = supabase
-      .channel('admin-products-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
-      .subscribe();
-
-    const stockChannel = supabase
-      .channel('admin-stock-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_stock' }, () => {
-        if (selectedBranchForStock) fetchBranchStock(selectedBranchForStock);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(boysChannel);
-      supabase.removeChannel(productsChannel);
-      supabase.removeChannel(stockChannel);
-    };
-  }, [selectedBranchForStock]);
-
-  // Close 3-dot menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -187,30 +139,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // ---- Branch Stock Functions ----
-  const fetchBranchStock = async (branchId: string) => {
-    if (!branchId) return;
-    const { data } = await supabase
-      .from('branch_stock')
-      .select('*, products(name, sku, price, unit)')
-      .eq('branch_id', branchId);
-    if (data) setBranchStock(data);
-  };
-
-  const updateBranchStock = async (branchStockId: string, newStock: number) => {
-    const { error } = await supabase
-      .from('branch_stock')
-      .update({ stock: newStock, updated_at: new Date() })
-      .eq('id', branchStockId);
-    if (!error) {
-      setBranchStock(prev => prev.map(item => item.id === branchStockId ? { ...item, stock: newStock } : item));
-      showToast('Stock Updated! ✅');
-    } else {
-      showToast('Error updating stock');
-    }
-  };
-
-  // ---- Product Functions ----
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name); setProdSku(product.sku || ''); setProdCat(product.category_id || '');
@@ -248,11 +176,11 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (editingProductFull) {
       const { error } = await supabase.from('products').update(productData).eq('id', editingProductFull.id);
       if (error) { alert('Product update nahi hua: ' + error.message); return; }
-      showToast('Product Updated! ✅');
+      alert('Product Updated!');
     } else {
       const { error } = await supabase.from('products').insert(productData);
       if (error) { alert('Product add nahi hua: ' + error.message); return; }
-      showToast('Product Added! ✅');
+      alert('Product Added!');
     }
     handleCancelEditProduct(); fetchData();
   };
@@ -266,7 +194,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsProdModal(false); fetchData();
   };
 
-  // ---- Category Functions ----
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -289,7 +216,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsCatModal(false); fetchData();
   };
 
-  // ---- Branch Functions ----
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
@@ -310,7 +236,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
-  // ---- Delivery Boy Functions ----
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
@@ -336,7 +261,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
-  // ---- Order Management ----
   const handleStatusChange = async (orderId: string, status: string) => {
     await supabase.from('orders').update({ status }).eq('id', orderId);
     fetchData();
@@ -356,18 +280,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setOpenOrderMenuId(null); fetchData();
   };
 
-  // ---- Pagination & Filter Logic ----
-  const filteredOrders = orders.filter(order => {
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer_mobile.includes(searchQuery) || order.id.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
-  // ---- Tier Functions ----
   const addTier = async () => {
     const last = tiers[tiers.length - 1];
     const min = last ? last.max_km : 0;
@@ -381,8 +293,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     await supabase.from('delivery_tiers').delete().eq('id', id);
     fetchData();
   };
-
-  // ---- Banner Functions ----
   const addBanner = async () => {
     if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
     let imgUrl = '';
@@ -399,8 +309,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     await supabase.from('banners').delete().eq('id', id);
     fetchData();
   };
-
-  // ---- App Content Functions ----
   const handleSelectPage = (key: string) => {
     setSelectedPage(key);
     const page = appPages.find(p => p.page_key === key);
@@ -414,14 +322,10 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (!error) { alert('Content saved successfully!'); fetchData(); }
     else { alert('Error: ' + error.message); }
   };
-
-  // ---- Invoice Settings ----
   const saveInvoiceSettings = async () => {
     await supabase.from('invoice_settings').upsert(invoiceSettings);
     alert('Invoice Settings Saved!'); fetchData();
   };
-
-  // ---- Export ----
   const exportCustomers = () => {
     const header = ["Name", "Mobile Number"];
     const rows = customers.map(c => [c.name || 'Unknown', c.mobile]);
@@ -434,20 +338,23 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     link.click();
   };
 
+  const filteredOrders = orders.filter(order => {
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesSearch = order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) || order.customer_mobile.includes(searchQuery) || order.id.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'inventory', label: 'Inventory', icon: '📦' },
-    { id: 'products', label: 'Products', icon: '📁' },
-    { id: 'categories', label: 'Categories', icon: '🗂️' },
-    { id: 'customers', label: 'Customers', icon: '👥' },
-    { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
-    { id: 'branches', label: 'Branches', icon: '🏬' },
-    { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' },
-    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
-    { id: 'profile', label: 'My Profile', icon: '👤' },
-    { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'products', label: 'Products', icon: '📁' }, { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'customers', label: 'Customers', icon: '👥' }, { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
+    { id: 'branches', label: 'Branches', icon: '🏬' }, { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' }, { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
+    { id: 'profile', label: 'My Profile', icon: '👤' }, { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
@@ -494,24 +401,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .order-table tr:hover { background: #f8f9fa; }
         .menu-wrapper { position: relative; display: inline-block; }
       `}</style>
-
-      {/* 🔥 Toast Popup */}
-      {toast && (
-        <div style={{ 
-          position: 'fixed', 
-          top: '20px', 
-          right: '20px', 
-          background: '#111111', 
-          color: '#fff', 
-          padding: '10px 20px', 
-          borderRadius: '8px', 
-          zIndex: 999, 
-          fontWeight: 'bold',
-          boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-        }}>
-          {toast}
-        </div>
-      )}
 
       <div className="sidebar">
         <h2 style={{ marginBottom: '30px', color: '#111111' }}>FYNTAS Admin</h2>
@@ -601,70 +490,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
               <span style={{ fontSize: '13px' }}>Page {currentPage} of {Math.ceil(filteredOrders.length / ordersPerPage)}</span>
               <button className="btn btn-black" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => currentPage < Math.ceil(filteredOrders.length / ordersPerPage) && paginate(currentPage + 1)} disabled={currentPage >= Math.ceil(filteredOrders.length / ordersPerPage)}>Next</button>
             </div>
-          </div>
-        )}
-
-        {/* Inventory Tab */}
-        {activeTab === 'inventory' && (
-          <div className="panel">
-            <h3>Branch Stock Management</h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label>Select Branch:</label>
-              <select 
-                value={selectedBranchForStock} 
-                onChange={(e) => { setSelectedBranchForStock(e.target.value); fetchBranchStock(e.target.value); }}
-                style={{ marginTop: '5px', padding: '10px', width: '200px' }}
-              >
-                <option value="">-- Choose Branch --</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-
-            {selectedBranchForStock && (
-              <div style={{ marginBottom: '10px' }}>
-                <input type="text" placeholder="Search products..." value={inventorySearch} onChange={(e) => setInventorySearch(e.target.value)} style={{ maxWidth: '200px' }} />
-              </div>
-            )}
-
-            {selectedBranchForStock && (
-              <table>
-                <thead>
-                  <tr><th>Product</th><th>SKU</th><th>Price</th><th>Unit</th><th>Current Stock</th><th>Update Stock</th></tr>
-                </thead>
-                <tbody>
-                  {branchStock.filter(item => (item.products?.name || '').toLowerCase().includes(inventorySearch.toLowerCase())).map(item => (
-                    <tr key={item.id}>
-                      <td>{item.products?.name || 'Unknown'}</td>
-                      <td>{item.products?.sku}</td>
-                      <td>₹{item.products?.price}</td>
-                      <td>{item.products?.unit}</td>
-                      <td>{item.stock}</td>
-                      <td>
-                        {/* 🔥 Save Button ke saath */}
-                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                          <input 
-                            type="number" 
-                            value={stockValues[item.id] ?? item.stock} 
-                            onChange={(e) => setStockValues(prev => ({ ...prev, [item.id]: parseFloat(e.target.value) }))}
-                            style={{ width: '80px' }}
-                          />
-                          <button 
-                            className="btn btn-green" 
-                            style={{ padding: '5px 10px', fontSize: '12px' }}
-                            onClick={() => updateBranchStock(item.id, stockValues[item.id] ?? item.stock)}
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            
-            {!selectedBranchForStock && <p style={{ color: '#666' }}>Branch select karein.</p>}
           </div>
         )}
 
@@ -1084,7 +909,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         </div>
       )}
 
-      {/* Order View Modal */}
       {selectedOrderForView && (
         <div className="modal-scrim show" onClick={() => setSelectedOrderForView(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
