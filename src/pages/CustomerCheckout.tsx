@@ -5,16 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// 🔥 TypeScript ko batayein ki Razorpay window mein exist karta hai
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
-
 const icon = L.icon({ iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png", iconSize: [25, 41], iconAnchor: [12, 41] });
-
-const RAZORPAY_KEY_ID = 'rzp_live_TU5CXRkM3NXLkk';
 
 const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: any) => {
   const [step, setStep] = useState(1);
@@ -34,22 +25,12 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
   const [userLng, setUserLng] = useState<number | null>(null);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true);
 
-  const [payMethod, setPayMethod] = useState<'razorpay' | 'upi' | 'cod'>('razorpay');
+  const [payMethod, setPayMethod] = useState<'upi' | 'cod'>('upi'); // Razorpay removed
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [tempOrderId, setTempOrderId] = useState('');
 
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
 
   useEffect(() => {
     if (isLoggedIn && savedMobile) {
@@ -116,86 +97,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + orderRef)}`;
   };
 
-  const handleRazorpay = async () => {
-    if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
-    setLoading(true);
-
-    try {
-      const orderData = {
-        customer_id: null,
-        customer_name: name,
-        customer_mobile: mobile,
-        address,
-        branch_id: branch.id,
-        total_amount: totalAmount,
-        delivery_charge: deliveryCharge,
-        status: 'pending',
-        payment_status: 'pending',
-        payment_method: 'razorpay'
-      };
-
-      const { data: order, error: orderError } = await supabase.from('orders').insert(orderData).select().single();
-      if (orderError) throw orderError;
-
-      const options = {
-        key: RAZORPAY_KEY_ID,
-        amount: totalAmount * 100,
-        currency: 'INR',
-        name: 'FYNTAS Food',
-        description: 'Order Payment',
-        handler: async (response: any) => {
-          const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
-            body: { 
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              order_id: order.id,
-              amount: totalAmount * 100
-            }
-          });
-
-          if (verifyError || !verifyData?.success) {
-            alert('Payment verification fail hua! Contact support.');
-            return;
-          }
-
-          const orderItems = cart.map((item: any) => ({
-            order_id: order.id, product_id: item.id, quantity: item.qty, price: item.price
-          }));
-          await supabase.from('order_items').insert(orderItems);
-
-          await supabase.from('orders').update({ payment_status: 'paid', status: 'accepted' }).eq('id', order.id);
-
-          alert('Payment Successful! Order Placed!');
-          onSuccess();
-        },
-        prefill: { name, contact: mobile },
-        theme: { color: '#111111' }
-      };
-
-      // 🔥 Yahan window.Razorpay use ho raha hai
-      if (window.Razorpay) {
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } else {
-        alert('Razorpay script load nahi hua! Page refresh karke try karein.');
-      }
-    } catch (e: any) {
-      alert('Razorpay error: ' + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCodButton = () => {
-    handlePlaceOrder('pending', 'cod', null);
-  };
-
-  const handleConfirmUpiPayment = () => {
-    setShowUpiModal(false);
-    handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
-  };
-
+  // 🔥 Order Place karne ka main function (UPI payment success ke baad)
   const handlePlaceOrder = async (paymentStatus: string, paymentMethod: string, paymentId: string | null) => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
@@ -233,9 +135,20 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     }
   };
 
+  // UPI Modal kholna
   const handlePayButton = () => {
     const tempId = Math.floor(100000 + Math.random() * 900000).toString();
     setTempOrderId(tempId); setShowUpiModal(true);
+  };
+
+  // UPI Payment complete hone ke baad "Proceed to Order" click
+  const handleUpiConfirm = () => {
+    setShowUpiModal(false);
+    handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
+  };
+
+  const handleCodButton = () => {
+    handlePlaceOrder('pending', 'cod', null);
   };
 
   return (
@@ -310,7 +223,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
             <div style={{ marginBottom: '15px' }}>
               <h3 style={{ color: '#111827' }}>Payment Method</h3>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => setPayMethod('razorpay')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: payMethod === 'razorpay' ? '2px solid #111111' : '1px solid #ccc', background: payMethod === 'razorpay' ? '#f3f4f6' : '#fff', color: '#111827', fontWeight: 'bold', cursor: 'pointer' }}>💳 Razorpay</button>
                 <button onClick={() => setPayMethod('upi')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: payMethod === 'upi' ? '2px solid #111111' : '1px solid #ccc', background: payMethod === 'upi' ? '#f3f4f6' : '#fff', color: '#111827', fontWeight: 'bold', cursor: 'pointer' }}>UPI / QR</button>
                 <button onClick={() => setPayMethod('cod')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: payMethod === 'cod' ? '2px solid #111111' : '1px solid #ccc', background: payMethod === 'cod' ? '#f3f4f6' : '#fff', color: '#111827', fontWeight: 'bold', cursor: 'pointer' }}>COD</button>
               </div>
@@ -321,7 +233,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
               <p style={{ display: 'flex', justifyContent: 'space-between', color: '#111827' }}><span>Delivery Charge</span><span>₹{deliveryCharge}</span></p>
               <p style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20px', fontWeight: 'bold', color: '#111827', marginTop: '10px' }}><span>Total Amount</span><span>₹{totalAmount}</span></p>
 
-              {payMethod === 'razorpay' && <button onClick={handleRazorpay} disabled={loading} style={{ width: '100%', padding: '16px', background: '#111111', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px' }}>{loading ? 'Processing...' : 'Pay via Razorpay'}</button>}
               {payMethod === 'upi' && <button onClick={handlePayButton} disabled={loading} style={{ width: '100%', padding: '16px', background: '#111111', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px' }}>{loading ? 'Placing...' : 'Pay via UPI / QR'}</button>}
               {payMethod === 'cod' && <button onClick={handleCodButton} disabled={loading} style={{ width: '100%', padding: '16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', marginTop: '15px' }}>{loading ? 'Placing...' : 'Place Order (COD)'}</button>}
             </div>
@@ -337,8 +248,11 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
               <QRCode value={generateUpiLink(totalAmount, tempOrderId)} size={200} fgColor="#000000" bgColor="#ffffff" />
             </div>
+            <p style={{ fontSize: '12px', color: '#666' }}>UPI App se payment karne ke baad wapas aayein</p>
             <a href={generateUpiLink(totalAmount, tempOrderId)} style={{ display: 'block', width: '100%', padding: '12px', background: '#059669', color: '#fff', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold', marginBottom: '10px', boxSizing: 'border-box' }}>📱 Open UPI App</a>
-            <button onClick={handleConfirmUpiPayment} style={{ width: '100%', padding: '12px', background: '#111111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>✓ I have paid - Place Order</button>
+            
+            {/* I have paid removed! User yahan Proceed to Order dabayega */}
+            <button onClick={handleUpiConfirm} style={{ width: '100%', padding: '12px', background: '#111111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Proceed to Order</button>
             <button onClick={() => setShowUpiModal(false)} style={{ width: '100%', padding: '10px', background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', marginTop: '10px' }}>Cancel</button>
           </div>
         </div>
