@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import QRCode from 'react-qr-code';
-import Razorpay from 'react-razorpay';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -12,7 +11,7 @@ const icon = L.icon({ iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/mark
 const RAZORPAY_KEY_ID = 'rzp_live_TU5CXRkM3NXLkk';
 
 const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: any) => {
-  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP, 3: Details
+  const [step, setStep] = useState(1);
   const [mobile, setMobile] = useState(savedMobile || '');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
@@ -29,14 +28,25 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
   const [userLng, setUserLng] = useState<number | null>(null);
   const [useCurrentLocation, setUseCurrentLocation] = useState(true);
 
-  const [payMethod, setPayMethod] = useState<'razorpay' | 'upi' | 'cod'>('razorpay'); // Default Razorpay
+  const [payMethod, setPayMethod] = useState<'razorpay' | 'upi' | 'cod'>('razorpay');
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [tempOrderId, setTempOrderId] = useState('');
 
   const UPI_ID = '9984389923@ybl';
   const UPI_NAME = 'Fyntas Food';
 
-  // 🔥 Agar user logged in hai, toh Step 3 (Details) par seedha le jao
+  // 🔥 Razorpay Script Load Logic (React 19 compatible)
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // Agar user logged in hai, toh Step 3 par le jao
   useEffect(() => {
     if (isLoggedIn && savedMobile) {
       setMobile(savedMobile);
@@ -50,7 +60,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       const { data: t } = await supabase.from('delivery_tiers').select('*').order('max_km');
       if (b) setBranches(b);
       if (t) setTiers(t);
-      
       setUserLat(27.2150);
       setUserLng(77.3350);
       setAddress("PGHV+65Q, Malmalija, Uttar Pradesh 273002");
@@ -102,13 +111,13 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     return `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + orderRef)}`;
   };
 
-  // 🔥 Razorpay Payment Handler
+  // 🔥 Razorpay Payment Handler (Direct window.Razorpay use)
   const handleRazorpay = async () => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
 
     try {
-      // 1. Order pehle database mein save karo (pending razorpay status ke saath)
+      // 1. Order pehle database mein save karo
       const orderData = {
         customer_id: null,
         customer_name: name,
@@ -128,12 +137,12 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
       // 2. Razorpay Options
       const options = {
         key: RAZORPAY_KEY_ID,
-        amount: totalAmount * 100, // Paise mein convert
+        amount: totalAmount * 100,
         currency: 'INR',
         name: 'FYNTAS Food',
         description: 'Order Payment',
         handler: async (response: any) => {
-          // 3. Payment success - verify karne ke liye Edge Function call karo
+          // 3. verify-payment Edge Function call karo
           const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-payment', {
             body: { 
               razorpay_order_id: response.razorpay_order_id,
@@ -155,7 +164,7 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
           }));
           await supabase.from('order_items').insert(orderItems);
 
-          // 5. Payment success, order update
+          // 5. Payment success update
           await supabase.from('orders').update({ payment_status: 'paid', status: 'accepted' }).eq('id', order.id);
 
           alert('Payment Successful! Order Placed!');
@@ -165,8 +174,13 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
         theme: { color: '#111111' }
       };
 
-      const razorpay = new (Razorpay as any)(options);
-      razorpay.open();
+      // Razorpay Open
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } else {
+        alert('Razorpay script load nahi hua! Page refresh karke try karein.');
+      }
     } catch (e: any) {
       alert('Razorpay error: ' + e.message);
     } finally {
@@ -183,7 +197,6 @@ const CustomerCheckout = ({ cart, onSuccess, onBack, savedMobile, isLoggedIn }: 
     handlePlaceOrder('paid', 'upi', `UPI-${tempOrderId}-${Date.now()}`);
   };
 
-  // 🔥 General Order Save Function (COD / UPI ke liye)
   const handlePlaceOrder = async (paymentStatus: string, paymentMethod: string, paymentId: string | null) => {
     if (!name || !address || !branch) return alert('Naam, Address aur Branch bharna zaroori hai!');
     setLoading(true);
