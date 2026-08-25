@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CustomerHome from './pages/CustomerHome';
 import CustomerCategories from './pages/CustomerCategories';
 import CustomerProfile from './pages/CustomerProfile';
@@ -8,7 +8,6 @@ import CustomerCheckout from './pages/CustomerCheckout';
 import ProductPage from './pages/ProductPage';
 import CustomerOrders from './pages/CustomerOrders';
 import CustomerAddresses from './pages/CustomerAddresses';
-// ✅ Import Supabase
 import { supabase } from './supabaseClient';
 import OtpFlow from './components/OtpFlow';
 
@@ -32,6 +31,26 @@ const CustomerLayout = () => {
   const handleProductClick = (product: any) => { setSelectedProduct(product); setIsProductPage(true); };
   const handleBack = () => { setIsProductPage(false); setSelectedProduct(null); };
   const handleLogout = () => { localStorage.removeItem('fyntas_mobile'); localStorage.removeItem('fyntas_name'); setIsLoggedIn(false); setUserMobile(''); setUserName(''); };
+
+  // Realtime Subscription for Customer Orders
+  useEffect(() => {
+    if (!userMobile) return;
+
+    const channel = supabase
+      .channel('customer-orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `customer_mobile=eq.${userMobile}` },
+        (payload) => {
+          console.log('Order update for customer:', payload);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userMobile]);
 
   const tabs = [
     { id: 'home', label: 'Home', icon: '🏠' }, { id: 'favorite', label: 'Favorite', icon: '❤️' },
@@ -97,14 +116,11 @@ const CustomerLayout = () => {
         {activeTab === 'home' && <CustomerHome addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'categories' && <CustomerCategories addToCart={addToCart} onProductClick={handleProductClick} />}
         {activeTab === 'favorite' && <CustomerFavorites />}
-        
-        {/* ✅ Props pass karo */}
         {activeTab === 'profile' && <CustomerProfile userName={userName} userMobile={userMobile} onShowOrders={() => setActiveTab('orders')} />}
-        
         {activeTab === 'orders' && <CustomerOrders />}
         {activeTab === 'addresses' && <CustomerAddresses />}
         {activeTab === 'cart' && !isCheckout && <CustomerCart cart={cart} setCart={setCart} onCheckout={() => setIsCheckout(true)} />}
-        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
+        {activeTab === 'cart' && isCheckout && <CustomerCheckout cart={cart} setCart={setCart} savedMobile={userMobile} isLoggedIn={isLoggedIn} onSuccess={() => { setIsCheckout(false); setCart([]); setActiveTab('home'); }} onBack={() => setIsCheckout(false)} />}
         {activeTab === 'wishlist' && <div style={{ padding: '20px' }}><p>Wishlist</p></div>}
         {activeTab === 'about' && <div style={{ padding: '20px' }}><p>About Us</p></div>}
         {activeTab === 'privacy' && <div style={{ padding: '20px' }}><p>Privacy Policy</p></div>}
@@ -135,7 +151,6 @@ const CustomerLayout = () => {
                 setIsLoggedIn(true);
                 setShowLogin(false);
 
-                // ✅ Fix: Admin ko Customer dikhane ke liye Customers table mein save karo
                 const { error } = await supabase
                   .from('customers')
                   .upsert({ mobile: user.mobile, name: user.name || 'User' }, { onConflict: 'mobile' });
