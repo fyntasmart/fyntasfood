@@ -13,7 +13,6 @@ interface Customer { id: string; name: string; mobile: string; created_at: strin
 interface Banner { id: string; title: string; image_url: string; is_active: boolean; }
 interface AppPage { id: string; page_key: string; content: string; }
 interface InvoiceSettings { id: string; welcome_note: string; terms: string; footer: string; }
-// ✅ Naya Interface: Inventory
 interface Inventory { id: string; product_id: string; branch_id: string; stock: number; low_stock_threshold: number; updated_at: string; }
 
 const UNITS = ['Pcs', 'Kg', 'Gram', 'Liter', 'ML', 'Half Plate', 'Full Plate', 'Dozen', 'Packet', 'Box'];
@@ -32,8 +31,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [appPages, setAppPages] = useState<AppPage[]>([]);
   const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({ id: '', welcome_note: '', terms: '', footer: '' });
-
-  // ✅ Inventory States
   const [inventory, setInventory] = useState<Inventory[]>([]);
   const [inventoryProducts, setInventoryProducts] = useState<any[]>([]);
   const [inventoryBranches, setInventoryBranches] = useState<any[]>([]);
@@ -119,7 +116,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       supabase.from('banners').select('*').order('created_at', { ascending: false }),
       supabase.from('app_pages').select('*'),
       supabase.from('invoice_settings').select('*').single(),
-      // ✅ Inventory data fetch
       supabase.from('product_inventory').select('*'),
       supabase.from('products').select('id, name, sku'),
       supabase.from('branches').select('id, name')
@@ -135,7 +131,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     if (bn.data) setBanners(bn.data);
     if (pages.data && pages.data.length > 0) setAppPages(pages.data);
     if (inv.data) setInvoiceSettings(inv.data);
-    // ✅ Inventory states set
     if (inv.data) setInventory(inv.data);
     if (invP.data) setInventoryProducts(invP.data);
     if (invB.data) setInventoryBranches(invB.data);
@@ -143,28 +138,16 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   useEffect(() => {
     fetchData();
-    // 🔴 Realtime Subscription - Orders table mein koi bhi change hoga toh turant fetch hoga
     const channel = supabase
       .channel('admin-orders-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          fetchData();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => supabase.removeChannel(channel);
   }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenOrderMenuId(null);
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpenOrderMenuId(null);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -402,64 +385,72 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     link.click();
   };
 
-  // ✅ Inventory Transfer Function
+  // ✅ Edit Product from Inventory
+  const editProductFromInventory = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      handleStartEditProduct(product);
+      setActiveTab('products');
+    }
+  };
+
+  // ✅ Update Stock
+  const updateStock = async (productId: string, branchId: string, newStock: number) => {
+    const existing = inventory.find(i => i.product_id === productId && i.branch_id === branchId);
+    if (existing) {
+      await supabase.from('product_inventory').update({ stock: newStock }).eq('id', existing.id);
+    } else {
+      await supabase.from('product_inventory').insert({ product_id: productId, branch_id: branchId, stock: newStock, low_stock_threshold: 10 });
+    }
+    fetchData();
+  };
+
+  // ✅ Stock Transfer
   const handleTransfer = async () => {
     const productId = (document.getElementById('transferProduct') as HTMLSelectElement).value;
     const fromBranch = (document.getElementById('transferFrom') as HTMLSelectElement).value;
     const toBranch = (document.getElementById('transferTo') as HTMLSelectElement).value;
     const qty = parseFloat((document.getElementById('transferQty') as HTMLInputElement).value || '0');
-    
-    if (!productId || !fromBranch || !toBranch || qty <= 0) {
-      alert('Sab fields sahi bharein!');
-      return;
-    }
-    
-    // From branch ka stock check karo
+
+    if (!productId || !fromBranch || !toBranch || qty <= 0) return alert('Sab fields sahi bharein!');
+
     const fromInv = inventory.find(i => i.product_id === productId && i.branch_id === fromBranch);
-    if (!fromInv || fromInv.stock < qty) {
-      alert('From branch mein itna stock nahi hai!');
-      return;
-    }
-    
-    // Stock update (from branch reduce, to branch increase)
+    if (!fromInv || fromInv.stock < qty) return alert('From branch mein itna stock nahi hai!');
+
     await supabase.from('product_inventory').update({ stock: fromInv.stock - qty }).eq('id', fromInv.id);
-    
     const toInv = inventory.find(i => i.product_id === productId && i.branch_id === toBranch);
-    if (toInv) {
-      await supabase.from('product_inventory').update({ stock: toInv.stock + qty }).eq('id', toInv.id);
-    } else {
-      await supabase.from('product_inventory').insert({ product_id: productId, branch_id: toBranch, stock: qty });
-    }
-    
-    // Movement log karo
-    await supabase.from('stock_movements').insert({
-      product_id: productId,
-      from_branch_id: fromBranch,
-      to_branch_id: toBranch,
-      quantity: qty,
-      type: 'transfer'
-    });
-    
+    if (toInv) await supabase.from('product_inventory').update({ stock: toInv.stock + qty }).eq('id', toInv.id);
+    else await supabase.from('product_inventory').insert({ product_id: productId, branch_id: toBranch, stock: qty });
+
+    await supabase.from('stock_movements').insert({ product_id: productId, from_branch_id: fromBranch, to_branch_id: toBranch, quantity: qty, type: 'transfer' });
     fetchData();
     alert('Transfer successful!');
   };
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'products', label: 'Products', icon: '📁' }, { id: 'categories', label: 'Categories', icon: '🗂️' },
-    { id: 'customers', label: 'Customers', icon: '👥' }, { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
-    { id: 'branches', label: 'Branches', icon: '🏬' }, { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' }, { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
-    // ✅ Naya Inventory Tab
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'products', label: 'Products', icon: '📁' },
+    { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
+    { id: 'branches', label: 'Branches', icon: '🏬' },
+    { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' },
+    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
     { id: 'inventory', label: 'Store Inventory', icon: '📦' },
-    { id: 'profile', label: 'My Profile', icon: '👤' }, { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'profile', label: 'My Profile', icon: '👤' },
+    { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
   const statusOptions = [
-    { value: 'pending', label: 'NEW' }, { value: 'accepted', label: 'CONFIRMED' },
-    { value: 'processing', label: 'PROCESSING' }, { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
-    { value: 'delivered', label: 'DELIVERED' }, { value: 'completed', label: 'COMPLETED' },
+    { value: 'pending', label: 'NEW' },
+    { value: 'accepted', label: 'CONFIRMED' },
+    { value: 'processing', label: 'PROCESSING' },
+    { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
+    { value: 'delivered', label: 'DELIVERED' },
+    { value: 'completed', label: 'COMPLETED' },
     { value: 'cancelled', label: 'CANCELLED' },
   ];
 
@@ -474,10 +465,13 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .panel { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         input, select, textarea { background: #ffffff; border: 1px solid #e5e7eb; color: #111111; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
         .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
-        .btn-black { background: #111111; } .btn-green { background: #059669; }
-        .btn-red { background: #dc2626; } .btn-blue { background: #2563eb; }
+        .btn-black { background: #111111; }
+        .btn-green { background: #059669; }
+        .btn-red { background: #dc2626; }
+        .btn-blue { background: #2563eb; }
         .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        .active { background: #d1fae5; color: #065f46; } .inactive { background: #fee2e2; color: #991b1b; }
+        .active { background: #d1fae5; color: #065f46; }
+        .inactive { background: #fee2e2; color: #991b1b; }
         .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:300; padding:20px;}
         .modal-scrim.show{display:flex;}
         .modal-card{width:100%; max-width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); position:relative;}
@@ -491,7 +485,8 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .dots-menu button.danger{color:#dc2626;}
         .modal-body{padding:18px 20px;}
         .detail-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:14px;}
-        .detail-row .dl{color:#6b7280;} .detail-row .dv{font-weight:600;}
+        .detail-row .dl{color:#6b7280;}
+        .detail-row .dv{font-weight:600;}
         .modal-body input { width: 100%; text-align: left; margin-bottom: 5px; }
         .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .order-table { width: 100%; border-collapse: collapse; }
@@ -499,9 +494,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         .order-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; vertical-align: middle; }
         .order-table tr:hover { background: #f8f9fa; }
         .menu-wrapper { position: relative; display: inline-block; }
-        .inventory-table td { vertical-align: middle; }
-        .transfer-box { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .transfer-box select, .transfer-box input { flex: 1; min-width: 150px; }
       `}</style>
 
       <div className="sidebar">
@@ -832,88 +824,97 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* ✅ Store Inventory Tab */}
+        {/* ✅ STORE INVENTORY TAB (Fully Working) */}
         {activeTab === 'inventory' && (
           <div className="panel">
-            <h3>Store Inventory</h3>
-            {/* Table: Products × Branches */}
-            <table className="order-table inventory-table" style={{ marginBottom: '20px' }}>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  {inventoryBranches.map(b => <th key={b.id}>{b.name}</th>)}
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventoryProducts.map(product => {
-                  const productInventory = inventory.filter(i => i.product_id === product.id);
-                  return (
-                    <tr key={product.id}>
-                      <td>{product.name}</td>
-                      {inventoryBranches.map(branch => {
-                        const inv = productInventory.find(i => i.branch_id === branch.id);
-                        const stockVal = inv ? inv.stock : 0;
-                        return (
-                          <td key={branch.id}>
-                            <input
-                              type="number"
-                              value={stockVal}
-                              style={{ width: '60px', padding: '4px' }}
-                              onBlur={async (e) => {
-                                const newStock = parseFloat(e.target.value) || 0;
-                                if (inv) {
-                                  await supabase.from('product_inventory').update({ stock: newStock }).eq('id', inv.id);
-                                } else {
-                                  await supabase.from('product_inventory').insert({
-                                    product_id: product.id,
-                                    branch_id: branch.id,
-                                    stock: newStock,
-                                    low_stock_threshold: 10
-                                  });
-                                }
-                                fetchData();
-                              }}
-                            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3>Store Inventory</h3>
+              <button className="btn btn-black" onClick={fetchData}>🔄 Refresh</button>
+            </div>
+
+            {/* Product × Branch Table */}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="order-table" style={{ minWidth: '800px' }}>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    {/* ✅ Saare branches ke columns yahan dikhenge */}
+                    {inventoryBranches.map(b => <th key={b.id}>{b.name}</th>)}
+                    <th>Total</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventoryProducts.length === 0 ? (
+                    <tr><td colSpan={inventoryBranches.length + 3} style={{ textAlign: 'center', padding: '20px' }}>No products found.</td></tr>
+                  ) : (
+                    inventoryProducts.map(product => {
+                      const productInventory = inventory.filter(i => i.product_id === product.id);
+                      return (
+                        <tr key={product.id}>
+                          <td style={{ fontWeight: '600' }}>{product.name}</td>
+                          {inventoryBranches.map(branch => {
+                            const inv = productInventory.find(i => i.branch_id === branch.id);
+                            const stockVal = inv ? inv.stock : 0;
+                            return (
+                              <td key={branch.id}>
+                                <input
+                                  type="number"
+                                  value={stockVal}
+                                  style={{ width: '70px', padding: '4px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+                                  onBlur={(e) => updateStock(product.id, branch.id, parseFloat(e.target.value) || 0)}
+                                />
+                              </td>
+                            );
+                          })}
+                          <td>{productInventory.reduce((sum, i) => sum + (i.stock || 0), 0)}</td>
+                          <td>
+                            {/* ✏️ Product Edit Button */}
+                            <button className="btn btn-blue" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => editProductFromInventory(product.id)}>
+                              ✏️ Edit
+                            </button>
                           </td>
-                        );
-                      })}
-                      <td>{productInventory.reduce((sum, i) => sum + (i.stock || 0), 0)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Low Stock Alerts */}
-            <h3>Low Stock Alerts</h3>
-            {inventory.filter(i => i.stock <= i.low_stock_threshold).map(lowInv => {
-              const product = inventoryProducts.find(p => p.id === lowInv.product_id);
-              const branch = inventoryBranches.find(b => b.id === lowInv.branch_id);
-              return (
-                <div key={lowInv.id} style={{ color: 'red', padding: '5px 0' }}>
-                  ⚠️ {product?.name} - {branch?.name} mein sirf {lowInv.stock} stock bacha (Limit: {lowInv.low_stock_threshold})
-                </div>
-              );
-            })}
+            {inventory.filter(i => i.stock <= i.low_stock_threshold).length > 0 && (
+              <div style={{ marginTop: '20px', padding: '15px', background: '#fef3c7', borderRadius: '8px' }}>
+                <h4 style={{ color: '#d97706', margin: '0 0 10px' }}>⚠️ Low Stock Alerts</h4>
+                {inventory.filter(i => i.stock <= i.low_stock_threshold).map(lowInv => {
+                  const product = inventoryProducts.find(p => p.id === lowInv.product_id);
+                  const branch = inventoryBranches.find(b => b.id === lowInv.branch_id);
+                  return (
+                    <div key={lowInv.id} style={{ fontSize: '13px', padding: '4px 0' }}>
+                      {product?.name} - {branch?.name} mein sirf <b>{lowInv.stock}</b> stock bacha (Limit: {lowInv.low_stock_threshold})
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Stock Transfer Section */}
-            <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-              <h3>Stock Transfer (Store se Store)</h3>
-              <div className="transfer-box">
-                <select id="transferProduct">
+            {/* Stock Transfer */}
+            <div style={{ marginTop: '30px', borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+              <h3>🔄 Stock Transfer (Store se Store)</h3>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <select id="transferProduct" style={{ minWidth: '180px' }}>
                   <option value="">Select Product</option>
                   {inventoryProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
-                <select id="transferFrom">
+                <select id="transferFrom" style={{ minWidth: '150px' }}>
                   <option value="">From Branch</option>
                   {inventoryBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
-                <select id="transferTo">
+                <select id="transferTo" style={{ minWidth: '150px' }}>
                   <option value="">To Branch</option>
                   {inventoryBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
-                <input id="transferQty" type="number" placeholder="Qty" style={{ width: '80px' }} />
+                <input id="transferQty" type="number" placeholder="Quantity" style={{ width: '100px' }} />
                 <button className="btn btn-blue" onClick={handleTransfer}>Transfer</button>
               </div>
             </div>
