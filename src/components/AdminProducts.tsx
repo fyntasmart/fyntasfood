@@ -28,13 +28,14 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isModal, setIsModal] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // FIX: string state
 
   const resetForm = () => {
     setEditingProduct(null);
     setProdName(''); setProdSku(''); setProdCat(''); setProdPrice(''); setProdStock('');
     setProdUnit('Pcs'); setProdDesc(''); setDiscountType('none'); setDiscountValue('');
     setGstEnabled(false); setGstRate(0); setMainImage(null); setGalleryImages([]);
+    setOpenMenuId(null);
   };
 
   const handleEdit = (product: any) => {
@@ -44,7 +45,7 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
     setProdUnit(product.unit || 'Pcs'); setProdDesc(product.description || '');
     setDiscountType(product.discount_type || 'none'); setDiscountValue(product.discount_value ? product.discount_value.toString() : '');
     setGstEnabled(product.gst_enabled); setGstRate(product.gst_rate);
-    setMainImage(null); setGalleryImages([]); setMenu(false); setIsModal(false);
+    setMainImage(null); setGalleryImages([]); setOpenMenuId(null); setIsModal(false);
   };
 
   const saveProduct = async () => {
@@ -79,12 +80,14 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
 
   const toggleActive = async (product: any) => {
     await supabase.from('products').update({ is_active: !product.is_active }).eq('id', product.id);
+    setOpenMenuId(null);
     refreshData();
   };
 
   const deleteProduct = async (id: string) => {
     if (!confirm('Delete karein?')) return;
     await supabase.from('products').delete().eq('id', id);
+    setOpenMenuId(null);
     refreshData();
   };
 
@@ -180,8 +183,8 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
               <td><span className={`status-pill ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Inactive'}</span></td>
               <td>
                 <div className="menu-wrapper">
-                  <button className="dots-btn" onClick={() => { setSelectedProduct(p); setMenu(true); }}>⋮</button>
-                  {menu && selectedProduct?.id === p.id && (
+                  <button className="dots-btn" onClick={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}>⋮</button>
+                  {openMenuId === p.id && (
                     <div className="dots-menu show">
                       <button onClick={() => handleEdit(p)}>Edit</button>
                       <button onClick={() => toggleActive(p)}>{p.is_active ? 'Deactivate' : 'Activate'}</button>
