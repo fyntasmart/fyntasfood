@@ -26,9 +26,8 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
   const [gstRate, setGstRate] = useState(0);
   const [mainImage, setMainImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [isModal, setIsModal] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // FIX: string state
+  // Remove selectedProduct, isModal, menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const resetForm = () => {
     setEditingProduct(null);
@@ -45,7 +44,7 @@ const AdminProducts = ({ products, categories, uploadImage, refreshData }: Admin
     setProdUnit(product.unit || 'Pcs'); setProdDesc(product.description || '');
     setDiscountType(product.discount_type || 'none'); setDiscountValue(product.discount_value ? product.discount_value.toString() : '');
     setGstEnabled(product.gst_enabled); setGstRate(product.gst_rate);
-    setMainImage(null); setGalleryImages([]); setOpenMenuId(null); setIsModal(false);
+    setMainImage(null); setGalleryImages([]); setOpenMenuId(null);
   };
 
   const saveProduct = async () => {
