@@ -8,7 +8,6 @@ const CustomerOrders = ({ savedMobile, isLoggedIn }: any) => {
   const [searched, setSearched] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // 🔥 Auto-fetch if already logged in
   useEffect(() => {
     if (isLoggedIn && savedMobile) {
       setMobile(savedMobile);
@@ -35,7 +34,6 @@ const CustomerOrders = ({ savedMobile, isLoggedIn }: any) => {
     setLoading(false);
   };
 
-  // 🔥 Cancel/Return Function
   const cancelOrder = async (orderId: string) => {
     if (!confirm('Kya aap yeh order cancel karna chahte hain?')) return;
     const { error } = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
@@ -58,7 +56,6 @@ const CustomerOrders = ({ savedMobile, isLoggedIn }: any) => {
     }
   };
 
-  // Status colors
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return { bg: '#fee2e2', color: '#dc2626', label: 'Pending' };
@@ -107,7 +104,6 @@ const CustomerOrders = ({ savedMobile, isLoggedIn }: any) => {
             </div>
             <p style={{ margin: '5px 0', color: '#666' }}>Total: <b>₹{order.total_amount}</b></p>
 
-            {/* 🔥 Cancel / Return Buttons */}
             {(order.status === 'pending' || order.status === 'accepted') && (
               <button 
                 onClick={() => cancelOrder(order.id)}
@@ -120,9 +116,29 @@ const CustomerOrders = ({ savedMobile, isLoggedIn }: any) => {
                 style={{ width: '100%', padding: '10px', background: '#fef3c7', color: '#d97706', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
               >Return Order</button>
             )}
+            <button 
+              onClick={() => setSelectedOrder(order)}
+              style={{ width: '100%', padding: '8px', background: 'none', border: 'none', color: '#2563eb', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' }}
+            >View Details</button>
           </div>
         );
       })}
+
+      {selectedOrder && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedOrder(null)}>
+          <div style={{ background: '#fff', borderRadius: '15px', padding: '20px', maxWidth: '350px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#111111' }}>Order Details</h3>
+              <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#111111' }}>✕</button>
+            </div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Name: </span><b>{selectedOrder.customer_name}</b></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Address: </span><b>{selectedOrder.address}</b></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Delivery: </span><b>₹{selectedOrder.delivery_charge}</b></div>
+            <div style={{ marginBottom: '10px' }}><span style={{ color: '#666' }}>Total: </span><b>₹{selectedOrder.total_amount}</b></div>
+            <div><span style={{ color: '#666' }}>Status: </span><b>{selectedOrder.status}</b></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
