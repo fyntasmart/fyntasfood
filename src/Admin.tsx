@@ -43,7 +43,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingProductFull, setEditingProductFull] = useState<Product | null>(null);
   const [selectedPage, setSelectedPage] = useState('about');
   const [currentContent, setCurrentContent] = useState('');
-
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImg, setBannerImg] = useState<File | null>(null);
   const [prodName, setProdName] = useState('');
@@ -72,7 +71,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [dbMobile, setDbMobile] = useState('');
   const [dbAadhar, setDbAadhar] = useState('');
   const [dbAddress, setDbAddress] = useState('');
-
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCatModal, setIsCatModal] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
@@ -90,7 +88,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   const [editingBoy, setEditingBoy] = useState(false);
   const [originalBoyMobile, setOriginalBoyMobile] = useState('');
 
-  // 🔥 Realtime Notification
   const [notification, setNotification] = useState('');
 
   const fetchData = async () => {
@@ -122,7 +119,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
 
   useEffect(() => {
     fetchData();
-    // 🔥 Realtime Subscription
     const channel = supabase
       .channel('orders-realtime')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, payload => {
@@ -155,7 +151,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     return data.publicUrl;
   };
 
-  // ---- Product Functions ----
+  // ---- Product ----
   const handleStartEditProduct = (product: Product) => {
     setEditingProductFull(product);
     setProdName(product.name); setProdSku(product.sku || ''); setProdCat(product.category_id || '');
@@ -211,7 +207,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsProdModal(false); fetchData();
   };
 
-  // ---- Category Functions ----
+  // ---- Category ----
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Category naam aur short code do!');
     let imgUrl = '';
@@ -234,7 +230,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setIsCatModal(false); fetchData();
   };
 
-  // ---- Branch Functions ----
+  // ---- Branch ----
   const addBranch = async () => {
     if (!newBranchName || !newBranchLat || !newBranchLng) return alert('Branch name, Lat aur Lng zaroori hain!');
     await supabase.from('branches').insert({ name: newBranchName, address: newBranchAddress, lat: parseFloat(newBranchLat), lng: parseFloat(newBranchLng), delivery_range_km: parseFloat(newBranchRange) || 10, max_delivery_km: parseFloat(newBranchMaxKm) || 15 });
@@ -255,7 +251,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBranch({ ...branch, is_active: !branch.is_active }); setBranchMenu(false); fetchData();
   };
 
-  // ---- Delivery Boy Functions ----
+  // ---- Delivery Boy ----
   const addDeliveryBoy = async () => {
     if (!dbName || !dbMobile) return alert('Name aur Mobile zaroori hain!');
     await supabase.from('delivery_boys').insert({ name: dbName, mobile: dbMobile, aadhar: dbAadhar, address: dbAddress });
@@ -281,7 +277,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     setSelectedBoy({ ...boy, is_active: !boy.is_active }); setBoyMenu(false); fetchData();
   };
 
-  // ---- Tier Functions ----
+  // ---- Tier ----
   const addTier = async () => {
     const last = tiers[tiers.length - 1];
     const min = last ? last.max_km : 0;
@@ -296,7 +292,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // ---- Banner Functions ----
+  // ---- Banner ----
   const addBanner = async () => {
     if (!bannerTitle || !bannerImg) return alert('Banner ka title aur image do!');
     let imgUrl = '';
@@ -314,7 +310,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
     fetchData();
   };
 
-  // ---- App Content Functions ----
+  // ---- Content ----
   const handleSelectPage = (key: string) => {
     setSelectedPage(key);
     const page = appPages.find(p => p.page_key === key);
@@ -380,12 +376,18 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
   };
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' }, { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'products', label: 'Products', icon: '📁' }, { id: 'categories', label: 'Categories', icon: '🗂️' },
-    { id: 'customers', label: 'Customers', icon: '👥' }, { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
-    { id: 'branches', label: 'Branches', icon: '🏬' }, { id: 'charges', label: 'Delivery Charges', icon: '💰' },
-    { id: 'banners', label: 'Banners', icon: '🖼️' }, { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
-    { id: 'profile', label: 'My Profile', icon: '👤' }, { id: 'policies', label: 'Policies', icon: '📜' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'orders', label: 'Orders', icon: '📦' },
+    { id: 'products', label: 'Products', icon: '📁' },
+    { id: 'categories', label: 'Categories', icon: '🗂️' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'delivery', label: 'Delivery Boys', icon: '🛵' },
+    { id: 'branches', label: 'Branches', icon: '🏬' },
+    { id: 'charges', label: 'Delivery Charges', icon: '💰' },
+    { id: 'banners', label: 'Banners', icon: '🖼️' },
+    { id: 'invoice_settings', label: 'Invoice Settings', icon: '🧾' },
+    { id: 'profile', label: 'My Profile', icon: '👤' },
+    { id: 'policies', label: 'Policies', icon: '📜' },
     { id: 'content', label: 'App Content', icon: '📝' },
   ];
 
@@ -403,7 +405,40 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           🔔 {notification}
         </div>
       )}
-      <style>{`... (same as before) ...`}</style>
+      <style>{`
+        .sidebar { width: 250px; background: #ffffff; border-right: 1px solid #f3f4f6; padding: 20px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer; border-radius: 8px; margin-bottom: 5px; color: #6b7280; }
+        .nav-item:hover { background: #f3f4f6; color: #111111; }
+        .nav-item.active { background: #111111; color: #ffffff; }
+        .content { flex: 1; padding: 20px; }
+        .panel { background: #ffffff; border: 1px solid #f3f4f6; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        input, select, textarea { background: #ffffff; border: 1px solid #e5e7eb; color: #111111; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; font-size: 14px; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; color: #fff; }
+        .btn-black { background: #111111; } .btn-green { background: #059669; } .btn-red { background: #dc2626; } .btn-blue { background: #2563eb; }
+        .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .active { background: #d1fae5; color: #065f46; } .inactive { background: #fee2e2; color: #991b1b; }
+        .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:300; padding:20px;}
+        .modal-scrim.show{display:flex;}
+        .modal-card{width:100%; max-width:420px; background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.1); position:relative;}
+        .modal-head{display:flex; align-items:center; gap:10px; padding:20px; border-bottom:1px solid #e5e7eb;}
+        .modal-close{margin-left:auto; width:30px;height:30px;border-radius:8px; background:#f3f4f6; color:#6b7280; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+        .dots-btn{width:30px;height:30px;border-radius:8px; background:#f3f4f6; color:#6b7280; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px;}
+        .dots-menu{position:absolute; top:60px; right:20px; min-width:150px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 10px 20px rgba(0,0,0,0.1); overflow:hidden; z-index:20; display:none;}
+        .dots-menu.show{display:block;}
+        .dots-menu button{width:100%; text-align:left; background:none; border:none; color:#111111; padding:10px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:8px;}
+        .dots-menu button:hover{background:#f3f4f6;}
+        .dots-menu button.danger{color:#dc2626;}
+        .modal-body{padding:18px 20px;}
+        .detail-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:14px;}
+        .detail-row .dl{color:#6b7280;} .detail-row .dv{font-weight:600;}
+        .modal-body input { width: 100%; text-align: left; margin-bottom: 5px; }
+        .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .order-table { width: 100%; border-collapse: collapse; }
+        .order-table th { text-align: left; padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; font-weight: 600; }
+        .order-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 13px; vertical-align: middle; }
+        .order-table tr:hover { background: #f8f9fa; }
+        .menu-wrapper { position: relative; display: inline-block; }
+      `}</style>
 
       <div className="sidebar">
         <h2 style={{ marginBottom: '30px', color: '#111111' }}>FYNTAS Admin</h2>
@@ -416,7 +451,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
       </div>
 
       <div className="content">
-        {/* Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="panel">
             <h3>Dashboard Overview</h3>
@@ -429,7 +463,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Orders */}
         {activeTab === 'orders' && (
           <div className="panel">
             <div className="table-controls">
@@ -496,46 +529,91 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Products */}
         {activeTab === 'products' && (
           <div className="panel">
-            {/* Full product add/edit code as before */}
-            <h3>Add Product (Units + 4 Images + GST)</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
-              <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
-              <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}>
-                <option value="">Select Category</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
-              <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
-              <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
-                {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-              </select>
-              <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
-                  <option value="none">No Discount</option>
-                  <option value="percent">Percentage (%)</option>
-                  <option value="amount">Flat Amount (₹)</option>
-                </select>
-                {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
-                {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image</label>
-                <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
-              </div>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3)</label>
-                <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
-              </div>
-            </div>
-            <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Add Product</button>
+            {editingProductFull ? (
+              <>
+                <h3>Edit Product (Units + 4 Images + GST)</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <button className="btn btn-red" onClick={handleCancelEditProduct}>← Back to Add/List</button>
+                  <h3 style={{ margin: 0 }}>{editingProductFull.name}</h3>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
+                  <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
+                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}>
+                    <option value="">Select Category</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
+                  <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
+                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
+                    {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
+                  <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
+                      <option value="none">No Discount</option>
+                      <option value="percent">Percentage (%)</option>
+                      <option value="amount">Flat Amount (₹)</option>
+                    </select>
+                    {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
+                    {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image {editingProductFull.image_url && <span style={{ color: 'green' }}>(Current Has Image)</span>}</label>
+                    <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3) {editingProductFull.image_2 && <span style={{ color: 'green' }}>(Current Has Gallery)</span>}</label>
+                    <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
+                  </div>
+                </div>
+                <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Update Product</button>
+              </>
+            ) : (
+              <>
+                <h3>Add Product (Units + 4 Images + GST)</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <input placeholder="SKU Code" value={prodSku} onChange={(e) => setProdSku(e.target.value)} />
+                  <input placeholder="Product Name" value={prodName} onChange={(e) => setProdName(e.target.value)} />
+                  <select value={prodCat} onChange={(e) => setProdCat(e.target.value)}>
+                    <option value="">Select Category</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <input placeholder="Price (₹)" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} />
+                  <input placeholder="Stock" value={prodStock} onChange={(e) => setProdStock(e.target.value)} />
+                  <select value={prodUnit} onChange={(e) => setProdUnit(e.target.value)}>
+                    {UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  </select>
+                  <textarea placeholder="Product Description" value={prodDesc} onChange={(e) => setProdDesc(e.target.value)} rows={2}></textarea>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <select value={discountType} onChange={(e) => setDiscountType(e.target.value)}>
+                      <option value="none">No Discount</option>
+                      <option value="percent">Percentage (%)</option>
+                      <option value="amount">Flat Amount (₹)</option>
+                    </select>
+                    {discountType !== 'none' && <input placeholder="Discount Value" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label><input type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} /> Enable GST</label>
+                    {gstEnabled && <select value={gstRate} onChange={(e) => setGstRate(parseFloat(e.target.value))}>{GST_RATES.map(rate => <option key={rate} value={rate}>{rate}%</option>)}</select>}
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Main Image</label>
+                    <input type="file" accept="image/*" onChange={(e) => setMainImage(e.target.files?.[0] || null)} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Gallery Images (3)</label>
+                    <input type="file" accept="image/*" multiple onChange={(e) => setGalleryImages(Array.from(e.target.files || []).slice(0, 3))} />
+                  </div>
+                </div>
+                <button className="btn btn-green" style={{ marginTop: '10px' }} onClick={addOrUpdateProduct}>Add Product</button>
+              </>
+            )}
             <h3 style={{ marginTop: '20px' }}>All Products</h3>
             <table>
               <thead><tr><th>Name</th><th>SKU</th><th>Unit</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
@@ -552,7 +630,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Categories */}
         {activeTab === 'categories' && (
           <div className="panel">
             <h3>All Categories</h3>
@@ -578,7 +655,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Customers */}
         {activeTab === 'customers' && (
           <div className="panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -596,7 +672,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Delivery Boys */}
         {activeTab === 'delivery' && (
           <div className="panel">
             <h3>Add Delivery Boy</h3>
@@ -612,7 +687,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Branches */}
         {activeTab === 'branches' && (
           <div className="panel">
             <h3>Add Branch (With Location & Max KM)</h3>
@@ -630,7 +704,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Charges */}
         {activeTab === 'charges' && (
           <div className="panel">
             <h3>Delivery Charge Settings</h3>
@@ -652,7 +725,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Banners */}
         {activeTab === 'banners' && (
           <div className="panel">
             <h3>Add New Banner</h3>
@@ -681,7 +753,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Invoice Settings */}
         {activeTab === 'invoice_settings' && (
           <div className="panel">
             <h3>Invoice Settings</h3>
@@ -695,7 +766,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Profile */}
         {activeTab === 'profile' && (
           <div className="panel">
             <h3>My Profile (Admin)</h3>
@@ -708,7 +778,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Policies */}
         {activeTab === 'policies' && (
           <div className="panel">
             <h3>Policies</h3>
@@ -719,7 +788,6 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
           </div>
         )}
 
-        {/* Content */}
         {activeTab === 'content' && (
           <div className="panel">
             <h3>Manage App Content</h3>
