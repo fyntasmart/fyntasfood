@@ -13,7 +13,7 @@ const AdminCategories = ({ categories, uploadImage, refreshData }: AdminCategori
   const [catImg, setCatImg] = useState<File | null>(null);
   const [selectedCat, setSelectedCat] = useState<any>(null);
   const [isModal, setIsModal] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // FIX
 
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Naam aur short code do!');
@@ -27,20 +27,20 @@ const AdminCategories = ({ categories, uploadImage, refreshData }: AdminCategori
   const saveCategory = async () => {
     if (!selectedCat) return;
     await supabase.from('categories').update(selectedCat).eq('id', selectedCat.id);
-    setIsModal(false); setMenu(false);
+    setIsModal(false); setOpenMenuId(null);
     refreshData();
   };
 
   const toggleActive = async (cat: any) => {
     await supabase.from('categories').update({ is_active: !cat.is_active }).eq('id', cat.id);
-    setMenu(false);
+    setOpenMenuId(null);
     refreshData();
   };
 
   const deleteCategory = async (id: string) => {
     if (!confirm('Delete karein?')) return;
     await supabase.from('categories').delete().eq('id', id);
-    setIsModal(false);
+    setIsModal(false); setOpenMenuId(null);
     refreshData();
   };
 
@@ -63,8 +63,8 @@ const AdminCategories = ({ categories, uploadImage, refreshData }: AdminCategori
               <td><span className={`status-pill ${cat.is_active ? 'active' : 'inactive'}`}>{cat.is_active ? 'Active' : 'Inactive'}</span></td>
               <td>
                 <div className="menu-wrapper">
-                  <button className="dots-btn" onClick={() => { setSelectedCat(cat); setMenu(true); }}>⋮</button>
-                  {menu && selectedCat?.id === cat.id && (
+                  <button className="dots-btn" onClick={() => setOpenMenuId(openMenuId === cat.id ? null : cat.id)}>⋮</button>
+                  {openMenuId === cat.id && (
                     <div className="dots-menu show">
                       <button onClick={() => setIsModal(true)}>Edit</button>
                       <button onClick={() => toggleActive(cat)}>{cat.is_active ? 'Deactivate' : 'Activate'}</button>
