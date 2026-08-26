@@ -13,7 +13,7 @@ const AdminCategories = ({ categories, uploadImage, refreshData }: AdminCategori
   const [catImg, setCatImg] = useState<File | null>(null);
   const [selectedCat, setSelectedCat] = useState<any>(null);
   const [isModal, setIsModal] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null); // FIX
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const addCategory = async () => {
     if (!catName || !catShort) return alert('Naam aur short code do!');
