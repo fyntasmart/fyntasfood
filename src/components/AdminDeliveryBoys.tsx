@@ -13,7 +13,6 @@ const AdminDeliveryBoys = ({ deliveryBoys, refreshData }: AdminDeliveryBoysProps
   const [dbAddress, setDbAddress] = useState('');
   const [selectedBoy, setSelectedBoy] = useState<any>(null);
   const [isModal, setIsModal] = useState(false);
-  const [menu, setMenu] = useState(false);
 
   const addBoy = async () => {
     if (!dbName || !dbMobile) return alert('Naam aur Mobile do!');
@@ -47,7 +46,7 @@ const AdminDeliveryBoys = ({ deliveryBoys, refreshData }: AdminDeliveryBoysProps
       <button className="btn btn-green" onClick={addBoy}>Add Boy</button>
       <h3>All Boys (Click Name)</h3>
       {deliveryBoys.map(boy => (
-        <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setIsModal(true); setMenu(false); }}>
+        <div key={boy.id} style={{ padding: '10px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setSelectedBoy(boy); setIsModal(true); }}>
           <span style={{ color: '#2563eb', fontWeight: 'bold', textDecoration: 'underline' }}>{boy.name}</span> - {boy.mobile}
         </div>
       ))}
