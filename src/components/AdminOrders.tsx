@@ -17,7 +17,8 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
   const ordersPerPage = 10;
 
   const [selectedOrderForView, setSelectedOrderForView] = useState<any>(null);
-  const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   // Menu band karne ke liye outside click
   useEffect(() => {
@@ -28,7 +29,7 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
       wrappers.forEach((wrapper) => {
         if (wrapper.contains(target)) isInside = true;
       });
-      if (!isInside) setOpenOrderMenuId(null);
+      if (!isInside) setOpenMenuId(null);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -45,14 +46,14 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   const statusOptions = [
-    { value: 'pending', label: 'NEW' },
-    { value: 'accepted', label: 'CONFIRMED' },
-    { value: 'processing', label: 'PROCESSING' },
-    { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
-    { value: 'delivered', label: 'DELIVERED' },
-    { value: 'completed', label: 'COMPLETED' },
-    { value: 'cancelled', label: 'CANCELLED' },
-    { value: 'returned', label: 'RETURNED' },
+    { value: 'pending', label: 'NEW', color: '#3b82f6' },
+    { value: 'accepted', label: 'CONFIRMED', color: '#8b5cf6' },
+    { value: 'processing', label: 'PROCESSING', color: '#f59e0b' },
+    { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY', color: '#ec4899' },
+    { value: 'delivered', label: 'DELIVERED', color: '#10b981' },
+    { value: 'completed', label: 'COMPLETED', color: '#10b981' },
+    { value: 'cancelled', label: 'CANCELLED', color: '#ef4444' },
+    { value: 'returned', label: 'RETURNED', color: '#6b7280' },
   ];
 
   // Stats Cards Data
@@ -66,6 +67,23 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
     { label: 'Completed', value: orders.filter(o => o.status === 'completed').length, color: '#10b981' },
     { label: 'Cancelled', value: orders.filter(o => o.status === 'cancelled').length, color: '#ef4444' },
   ];
+
+  const toggleMenu = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (openMenuId === orderId) {
+      setOpenMenuId(null);
+      return;
+    }
+    // Menu position set karo
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenuPosition({ top: rect.bottom + 8, left: rect.right - 200 });
+    setOpenMenuId(orderId);
+  };
+
+  const getStatusColor = (status: string) => {
+    const opt = statusOptions.find(o => o.value === status);
+    return opt ? opt.color : '#111111';
+  };
 
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', background: '#f8f9fa', minHeight: '100vh', padding: '20px' }}>
@@ -148,43 +166,36 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
                       </span>
                     </td>
                     <td style={{ padding: '15px' }}>
-                      <select 
-                        value={order.status} 
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)} 
-                        style={{ 
-                          padding: '6px 10px', 
-                          borderRadius: '6px', 
-                          border: '1px solid #e5e7eb', 
-                          fontSize: '12px', 
-                          fontWeight: '600', 
-                          cursor: 'pointer',
-                          background: order.status === 'completed' ? '#d1fae5' : order.status === 'cancelled' ? '#fee2e2' : '#ffffff',
-                          color: order.status === 'completed' ? '#065f46' : order.status === 'cancelled' ? '#991b1b' : '#111111'
-                        }}
-                      >
-                        {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                      </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: getStatusColor(order.status) }}></span>
+                        <select 
+                          value={order.status} 
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)} 
+                          style={{ 
+                            padding: '6px 10px', 
+                            borderRadius: '6px', 
+                            border: '1px solid #e5e7eb', 
+                            fontSize: '12px', 
+                            fontWeight: '600', 
+                            cursor: 'pointer',
+                            background: order.status === 'completed' ? '#d1fae5' : order.status === 'cancelled' ? '#fee2e2' : '#ffffff',
+                            color: order.status === 'completed' ? '#065f46' : order.status === 'cancelled' ? '#991b1b' : '#111111'
+                          }}
+                        >
+                          {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        </select>
+                      </div>
                     </td>
                     <td style={{ padding: '15px', color: '#6b7280', fontSize: '13px' }}>{new Date(order.created_at).toLocaleString()}</td>
                     <td style={{ padding: '15px' }}>
-                      <div className="menu-wrapper">
-                        <button className="dots-btn" onClick={(e) => { e.stopPropagation(); setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280' }}>⋮</button>
-                        <div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`} style={{ position: 'absolute', right: '0', top: '30px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', minWidth: '180px', zIndex: 20, overflow: 'hidden' }}>
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedOrderForView(order); setOpenOrderMenuId(null); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>👁️ View Details</button>
-                          <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
-                            <div style={{ padding: '0 14px', fontSize: '11px', color: '#6b7280' }}>Print Receipt</div>
-                            <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'a4'); setOpenOrderMenuId(null); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>🖨️ Normal (A4)</button>
-                            <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'thermal-80'); setOpenOrderMenuId(null); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>🖨️ Thermal 80mm</button>
-                            <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'thermal-58'); setOpenOrderMenuId(null); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>🖨️ Thermal 58mm</button>
-                          </div>
-                          <div style={{ borderTop: '1px solid #f3f4f6' }}>
-                            <select value={order.delivery_boy_id || ''} onChange={(e) => { e.stopPropagation(); assignDeliveryBoy(order.id, e.target.value); setOpenOrderMenuId(null); }} style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>
-                              <option value="">🛵 Assign Boy</option>
-                              {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
-                            </select>
-                          </div>
-                          <button className="danger" onClick={(e) => { e.stopPropagation(); deleteOrder(order.id); setOpenOrderMenuId(null); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#dc2626', borderTop: '1px solid #f3f4f6' }}>🗑️ Delete</button>
-                        </div>
+                      <div className="menu-wrapper" style={{ position: 'relative', display: 'inline-block' }}>
+                        <button 
+                          className="dots-btn" 
+                          onClick={(e) => toggleMenu(order.id, e)} 
+                          style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '5px 10px' }}
+                        >
+                          ⋮
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -233,6 +244,93 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
               <div className="detail-row"><span className="dl">Total</span><span className="dv" style={{ fontWeight: 'bold', color: '#059669' }}>₹{selectedOrderForView.total_amount}</span></div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 3-Dot Menu (Fixed Position) */}
+      {openMenuId && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: menuPosition.top, 
+            left: menuPosition.left, 
+            background: '#ffffff', 
+            border: '1px solid #e5e7eb', 
+            borderRadius: '8px', 
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
+            minWidth: '180px', 
+            zIndex: 999, 
+            overflow: 'hidden'
+          }}
+        >
+          <button 
+            onClick={() => { 
+              const order = orders.find(o => o.id === openMenuId);
+              if (order) setSelectedOrderForView(order);
+              setOpenMenuId(null); 
+            }} 
+            style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
+          >
+            👁️ View Details
+          </button>
+          <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
+            <div style={{ padding: '0 14px', fontSize: '11px', color: '#6b7280' }}>Print Receipt</div>
+            <button 
+              onClick={() => { 
+                const order = orders.find(o => o.id === openMenuId);
+                if (order) printReceipt(order.id, 'a4');
+                setOpenMenuId(null); 
+              }} 
+              style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
+            >
+              🖨️ Normal (A4)
+            </button>
+            <button 
+              onClick={() => { 
+                const order = orders.find(o => o.id === openMenuId);
+                if (order) printReceipt(order.id, 'thermal-80');
+                setOpenMenuId(null); 
+              }} 
+              style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
+            >
+              🖨️ Thermal 80mm
+            </button>
+            <button 
+              onClick={() => { 
+                const order = orders.find(o => o.id === openMenuId);
+                if (order) printReceipt(order.id, 'thermal-58');
+                setOpenMenuId(null); 
+              }} 
+              style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
+            >
+              🖨️ Thermal 58mm
+            </button>
+          </div>
+          <div style={{ borderTop: '1px solid #f3f4f6' }}>
+            <select 
+              value={''} 
+              onChange={(e) => { 
+                const order = orders.find(o => o.id === openMenuId);
+                if (order && e.target.value) assignDeliveryBoy(order.id, e.target.value);
+                setOpenMenuId(null); 
+              }} 
+              style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}
+            >
+              <option value="">🛵 Assign Boy</option>
+              {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
+            </select>
+          </div>
+          <button 
+            className="danger" 
+            onClick={() => { 
+              const order = orders.find(o => o.id === openMenuId);
+              if (order) deleteOrder(order.id);
+              setOpenMenuId(null); 
+            }} 
+            style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#dc2626', borderTop: '1px solid #f3f4f6' }}
+          >
+            🗑️ Delete
+          </button>
         </div>
       )}
     </div>
