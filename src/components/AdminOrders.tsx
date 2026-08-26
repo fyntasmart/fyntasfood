@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-// No useRef, No supabase needed (props se aa raha hai)
 
 // Props interface
 interface AdminOrdersProps {
@@ -20,7 +19,7 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
   const [selectedOrderForView, setSelectedOrderForView] = useState<any>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
 
-  // Close menu on outside click
+  // Menu band karne ke liye outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -46,10 +45,14 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   const statusOptions = [
-    { value: 'pending', label: 'NEW' }, { value: 'accepted', label: 'CONFIRMED' },
-    { value: 'processing', label: 'PROCESSING' }, { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
-    { value: 'delivered', label: 'DELIVERED' }, { value: 'completed', label: 'COMPLETED' },
-    { value: 'cancelled', label: 'CANCELLED' }, { value: 'returned', label: 'RETURNED' },
+    { value: 'pending', label: 'NEW' },
+    { value: 'accepted', label: 'CONFIRMED' },
+    { value: 'processing', label: 'PROCESSING' },
+    { value: 'out_for_delivery', label: 'OUT_FOR_DELIVERY' },
+    { value: 'delivered', label: 'DELIVERED' },
+    { value: 'completed', label: 'COMPLETED' },
+    { value: 'cancelled', label: 'CANCELLED' },
+    { value: 'returned', label: 'RETURNED' },
   ];
 
   return (
@@ -66,9 +69,16 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
       </div>
 
       <table className="order-table">
-        <thead><tr><th>ID</th><th>Order No</th><th>Customer</th><th>Address</th><th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+        <thead>
+          <tr>
+            <th>ID</th><th>Order No</th><th>Customer</th><th>Address</th>
+            <th>Amount</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th>
+          </tr>
+        </thead>
         <tbody>
-          {currentOrders.length === 0 ? <tr><td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>No orders found</td></tr> : (
+          {currentOrders.length === 0 ? (
+            <tr><td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>No orders found</td></tr>
+          ) : (
             currentOrders.map(order => (
               <tr key={order.id}>
                 <td>#{order.id.slice(0, 4)}</td>
@@ -87,19 +97,23 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
                   <div className="menu-wrapper">
                     <button className="dots-btn" onClick={(e) => { e.stopPropagation(); setOpenOrderMenuId(openOrderMenuId === order.id ? null : order.id); }}>⋮</button>
                     <div className={`dots-menu ${openOrderMenuId === order.id ? 'show' : ''}`}>
+                      {/* View Details */}
                       <button onClick={(e) => { e.stopPropagation(); setSelectedOrderForView(order); setOpenOrderMenuId(null); }}>👁️ View Details</button>
+                      {/* Print Options */}
                       <div style={{ borderTop: '1px solid #f3f4f6', padding: '5px 0' }}>
                         <div style={{ padding: '0 14px', fontSize: '11px', color: '#6b7280' }}>Print Receipt</div>
                         <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'a4'); setOpenOrderMenuId(null); }}>🖨️ Normal (A4)</button>
                         <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'thermal-80'); setOpenOrderMenuId(null); }}>🖨️ Thermal 80mm</button>
                         <button onClick={(e) => { e.stopPropagation(); printReceipt(order.id, 'thermal-58'); setOpenOrderMenuId(null); }}>🖨️ Thermal 58mm</button>
                       </div>
+                      {/* Assign Boy */}
                       <div style={{ borderTop: '1px solid #f3f4f6' }}>
                         <select value={order.delivery_boy_id || ''} onChange={(e) => { e.stopPropagation(); assignDeliveryBoy(order.id, e.target.value); setOpenOrderMenuId(null); }} style={{ padding: '8px 14px', width: '100%', background: 'none', border: 'none', fontSize: '13px', cursor: 'pointer', color: '#111111' }}>
                           <option value="">🛵 Assign Boy</option>
                           {deliveryBoys.filter(b => b.is_active).map(boy => <option key={boy.id} value={boy.id}>{boy.name}</option>)}
                         </select>
                       </div>
+                      {/* Delete */}
                       <button className="danger" onClick={(e) => { e.stopPropagation(); deleteOrder(order.id); setOpenOrderMenuId(null); }}>🗑️ Delete</button>
                     </div>
                   </div>
