@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import { useEffect, useState } from 'react';
+// No useRef, No supabase needed (props se aa raha hai)
 
 // Props interface
 interface AdminOrdersProps {
@@ -20,6 +20,7 @@ const AdminOrders = ({ orders, deliveryBoys, assignDeliveryBoy, handleStatusChan
   const [selectedOrderForView, setSelectedOrderForView] = useState<any>(null);
   const [openOrderMenuId, setOpenOrderMenuId] = useState<string | null>(null);
 
+  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
