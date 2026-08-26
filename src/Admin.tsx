@@ -158,16 +158,7 @@ const Admin = ({ onLogout }: { onLogout: () => void }) => {
         {activeTab === 'branches' && <AdminBranches branches={branches} refreshData={refreshData} />}
         {activeTab === 'charges' && <AdminCharges settings={settings} tiers={tiers} refreshData={refreshData} />}
         {activeTab === 'banners' && <AdminBanners banners={banners} uploadImage={uploadImage} refreshData={refreshData} />}
-        
-        {/* ✅ Yahan uploadImage prop add kiya hai */}
-        {activeTab === 'invoice_settings' && (
-          <AdminInvoiceSettings 
-            settings={invoiceSettings} 
-            refreshData={refreshData} 
-            uploadImage={uploadImage} 
-          />
-        )}
-        
+        {activeTab === 'invoice_settings' && <AdminInvoiceSettings settings={invoiceSettings} refreshData={refreshData} uploadImage={uploadImage} />}
         {activeTab === 'profile' && <AdminProfile onLogout={onLogout} />}
         {activeTab === 'policies' && <AdminPolicies onGoToContent={() => setActiveTab('content')} />}
         {activeTab === 'content' && <AdminContent appPages={appPages} refreshData={refreshData} />}
